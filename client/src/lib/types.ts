@@ -1,17 +1,23 @@
+export type SlideType = "intro" | "content" | "outro";
+
+export type VideoSplitLayout = "video-top" | "video-bottom" | "video-left" | "video-right" | "video-center";
+
 export interface SlideElement {
   id: string;
-  type: "heading" | "subheading" | "body" | "cta" | "image" | "shape" | "slideNumber";
+  type: "subtitle" | "heading" | "body" | "cta" | "image" | "video" | "shape" | "slideNumber" | "divider" | "logo";
   x: number;
   y: number;
   width: number;
   height: number;
   rotation: number;
+  visible: boolean;
   content?: string;
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
   textAlign?: "left" | "center" | "right";
   color?: string;
+  accentColor?: string; // for first-word accent coloring
   backgroundColor?: string;
   borderRadius?: number;
   opacity?: number;
@@ -19,19 +25,61 @@ export interface SlideElement {
   lineHeight?: number;
   letterSpacing?: number;
   textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+  fontStyle?: "normal" | "italic";
+  textShadow?: string; // CSS text-shadow value
   padding?: number;
+  placeholder?: string; // for image placeholders
+  // Video-specific fields
+  videoSrc?: string; // uploaded video URL or blob
+  videoThumbnail?: string; // poster/thumbnail image
+  videoMuted?: boolean;
+  videoLoop?: boolean;
+  // Logo-specific fields
+  logoSrc?: string; // uploaded logo image URL or data URL
+  logoFit?: "contain" | "cover" | "fill"; // how the logo fits its container, default "contain"
 }
+
+export type SlideLayout = "default" | "quote-card" | "infographics" | "testimonial" | "bento-grid" | "video";
 
 export interface Slide {
   id: string;
   order: number;
+  slideType: SlideType;
+  layout: SlideLayout;
   backgroundColor: string;
   backgroundGradient?: string;
   backgroundImage?: string;
-  backgroundPattern?: "none" | "dots" | "lines" | "diagonal" | "grid";
+  backgroundPattern?: "none" | "dots" | "lines" | "diagonal" | "grid" | "waves" | "crosses" | "zigzag" | "noise";
   patternOpacity?: number;
+  // Background image overlay — separate from full background image
+  backgroundOverlayImage?: string;
+  backgroundOverlayOpacity?: number; // 0-100, default 40
+  contentPadding?: number;
   elements: SlideElement[];
-  layout: "default" | "quote" | "split" | "centered" | "minimal";
+  // Configure toggles — which element types are enabled on this slide
+  showSubtitle: boolean;
+  showTitle: boolean;
+  showDescription: boolean;
+  showImage: boolean;
+  showCta: boolean;
+  // Layout-specific options
+  infographicsType?: "grid" | "cyclic";
+  infographicsColumns?: number;
+  showColumnsHeader?: boolean;
+  showCounter?: boolean;
+  testimonialLayout?: number; // 0-3
+  showStars?: boolean;
+  showAvatar?: boolean;
+  showName?: boolean;
+  showDesignation?: boolean;
+  showQuoteElement?: boolean;
+  bentoRowsCount?: number;
+  showBoxTheme?: boolean;
+  visible?: boolean;
+  // Video layout options
+  videoSplitLayout?: VideoSplitLayout;
+  videoSplitRatio?: number; // 0.3 to 0.8 — how much space the video takes
+  showVideo?: boolean;
 }
 
 export interface CarouselProject {
@@ -40,6 +88,7 @@ export interface CarouselProject {
   platform: "instagram" | "linkedin" | "tiktok" | "facebook" | "x";
   width: number;
   height: number;
+  slideCount: number;
   slides: Slide[];
   globalStyles: GlobalStyles;
 }
@@ -49,14 +98,42 @@ export interface GlobalStyles {
   bodyFont: string;
   headingFontSize: number;
   bodyFontSize: number;
-  colorPalette: string[];
+  customFontSizes: boolean;
+  customFontPairing: boolean;
+  colorPalette: string[]; // [background, accent, bodyText, headingText]
+  alternateColors: string[]; // alternate palette row
+  alternateColorsEnabled: boolean;
   brandingEnabled: boolean;
   brandName: string;
+  brandHandle: string;
   brandColor: string;
+  brandOnlyIntroOutro: boolean;
+  brandBorder: boolean;
+  brandShadow: boolean;
+  brandCustomColor: boolean;
+  brandCustomColorValue: string;
+  brandRoundness: number;
+  brandCustomSize: boolean;
+  brandSizePreset: "small" | "medium" | "large";
   slideNumberEnabled: boolean;
   slideNumberStyle: "plain" | "padded" | "hash" | "dot";
   swipeIndicatorEnabled: boolean;
   swipeText: string;
+  swipeStyle: "chevron" | "arrow-thin" | "arrow-bold";
+  swipeIcon: "none" | "chevron" | "arrow" | "circle" | "spark";
+  swipeIntroOnly: boolean;
+  swipeShadow: boolean;
+  bookmarkEnabled: boolean;
+  decorativeElementsEnabled: boolean;
+  decorativeOpacity: number;
+  decorativeRoundness: number;
+  slideNumberShadow: boolean;
+  ctaShadow: boolean;
+  qrCodeEnabled: boolean;
+  watermarkEnabled: boolean;
+  watermarkText: string;
+  // Custom fonts
+  customFontFiles: { name: string; url: string }[];
 }
 
 export interface ColorPaletteData {
@@ -66,16 +143,87 @@ export interface ColorPaletteData {
   isBuiltIn: boolean;
 }
 
-export const PLATFORM_SIZES: Record<string, { width: number; height: number; label: string }> = {
-  "instagram-square": { width: 1080, height: 1080, label: "Instagram Square" },
-  "instagram-portrait": { width: 1080, height: 1350, label: "Instagram Portrait" },
-  "instagram-story": { width: 1080, height: 1920, label: "Instagram Story" },
-  "linkedin": { width: 1080, height: 1080, label: "LinkedIn" },
-  "tiktok": { width: 1080, height: 1920, label: "TikTok" },
-  "facebook": { width: 1080, height: 1080, label: "Facebook" },
-  "x": { width: 1080, height: 1080, label: "X (Twitter)" },
-  "custom": { width: 1080, height: 1080, label: "Custom" },
+export interface PlatformSizeInfo {
+  width: number;
+  height: number;
+  label: string;
+  ratio: string;
+  icons: string[];
+  bestFor: string;
+  recommendedVideoLayouts: VideoSplitLayout[];
+}
+
+export const PLATFORM_SIZES: Record<string, PlatformSizeInfo> = {
+  "square": {
+    width: 1080, height: 1080, ratio: "1:1", label: "Square",
+    icons: ["linkedin", "instagram", "facebook"],
+    bestFor: "Instagram Feed, LinkedIn, Facebook",
+    recommendedVideoLayouts: ["video-top", "video-bottom"],
+  },
+  "landscape": {
+    width: 1440, height: 1080, ratio: "4:3", label: "Landscape",
+    icons: ["x"],
+    bestFor: "X/Twitter, LinkedIn Articles",
+    recommendedVideoLayouts: ["video-left", "video-right"],
+  },
+  "presentation": {
+    width: 1920, height: 1080, ratio: "16:9", label: "Presentation",
+    icons: ["presentation"],
+    bestFor: "Slide Decks, YouTube Thumbnails",
+    recommendedVideoLayouts: ["video-left", "video-right"],
+  },
+  "ultra-wide": {
+    width: 5120, height: 1080, ratio: "128:27", label: "Ultra Wide",
+    icons: ["tiktok", "youtube"],
+    bestFor: "TikTok Carousel, YouTube Banner",
+    recommendedVideoLayouts: ["video-left", "video-right"],
+  },
+  "portrait-4-5": {
+    width: 1080, height: 1350, ratio: "4:5", label: "Portrait",
+    icons: ["linkedin", "instagram"],
+    bestFor: "Instagram Carousel, LinkedIn",
+    recommendedVideoLayouts: ["video-top", "video-bottom", "video-center"],
+  },
+  "portrait-3-4": {
+    width: 1080, height: 1440, ratio: "3:4", label: "Portrait",
+    icons: ["linkedin", "instagram"],
+    bestFor: "Instagram Carousel, LinkedIn",
+    recommendedVideoLayouts: ["video-top", "video-bottom", "video-center"],
+  },
+  "story": {
+    width: 1080, height: 1920, ratio: "9:16", label: "Story",
+    icons: ["tiktok", "instagram"],
+    bestFor: "Instagram Stories, TikTok, Reels",
+    recommendedVideoLayouts: ["video-center", "video-top", "video-bottom"],
+  },
+  "pinterest-pin": {
+    width: 1000, height: 1500, ratio: "2:3", label: "Pinterest Pin",
+    icons: ["pinterest"],
+    bestFor: "Pinterest Pins",
+    recommendedVideoLayouts: ["video-top", "video-bottom"],
+  },
 };
+
+/** Check if a video layout is recommended for the current canvas size */
+export function isVideoLayoutRecommended(canvasWidth: number, canvasHeight: number, videoLayout: VideoSplitLayout): boolean {
+  const entry = Object.values(PLATFORM_SIZES).find(s => s.width === canvasWidth && s.height === canvasHeight);
+  if (!entry) return true; // unknown size, don't warn
+  return entry.recommendedVideoLayouts.includes(videoLayout);
+}
+
+/** Get a warning message if the video layout isn't great for this canvas */
+export function getVideoLayoutWarning(canvasWidth: number, canvasHeight: number, videoLayout: VideoSplitLayout): string | null {
+  if (isVideoLayoutRecommended(canvasWidth, canvasHeight, videoLayout)) return null;
+  const isPortrait = canvasHeight > canvasWidth;
+  const isLandscape = canvasWidth > canvasHeight;
+  if (isPortrait && (videoLayout === "video-left" || videoLayout === "video-right")) {
+    return "Side-by-side layout may look cramped on portrait canvas. Consider stacking video on top or bottom.";
+  }
+  if (isLandscape && (videoLayout === "video-top" || videoLayout === "video-bottom")) {
+    return "Stacked layout may leave the video very short on landscape canvas. Consider side-by-side layout.";
+  }
+  return "This layout may not display optimally at this canvas size.";
+}
 
 export const FONT_PAIRS: { heading: string; body: string; label: string }[] = [
   { heading: "General Sans", body: "General Sans", label: "General Sans" },
@@ -97,79 +245,211 @@ export const FCTG_BRAND_COLORS = {
   white: "#FFFFFF",
 };
 
-export function createDefaultSlide(order: number, palette: string[]): Slide {
-  const id = crypto.randomUUID();
+// ---- Slide Generators by Type ----
+
+function uid(): string {
+  return crypto.randomUUID();
+}
+
+export function createIntroSlide(palette: string[], styles: GlobalStyles): Slide {
   return {
-    id,
-    order,
-    backgroundColor: palette[0] || "#1a1a2e",
-    elements: [
-      {
-        id: crypto.randomUUID(),
-        type: "heading",
-        x: 80,
-        y: order === 0 ? 300 : 200,
-        width: 920,
-        height: 120,
-        rotation: 0,
-        content: order === 0 ? "Your Title Here" : `Slide ${order + 1}`,
-        fontSize: order === 0 ? 64 : 48,
-        fontFamily: "General Sans",
-        fontWeight: "700",
-        textAlign: "center",
-        color: palette[3] || "#ffffff",
-        lineHeight: 1.2,
-      },
-      {
-        id: crypto.randomUUID(),
-        type: "body",
-        x: 80,
-        y: order === 0 ? 450 : 360,
-        width: 920,
-        height: 200,
-        rotation: 0,
-        content: order === 0 ? "Swipe to learn more" : "Add your content here. Click to edit this text and make it your own.",
-        fontSize: 24,
-        fontFamily: "General Sans",
-        fontWeight: "400",
-        textAlign: "center",
-        color: palette[2] || "#cccccc",
-        lineHeight: 1.6,
-      },
-    ],
+    id: uid(),
+    order: 0,
+    slideType: "intro",
     layout: "default",
+    backgroundColor: palette[0],
     backgroundPattern: "none",
     patternOpacity: 10,
+    showSubtitle: true,
+    showTitle: true,
+    showDescription: true,
+    showImage: false,
+    showCta: false,
+    elements: [
+      {
+        id: uid(), type: "subtitle", visible: true,
+        x: 80, y: 280, width: 920, height: 40, rotation: 0,
+        content: "Your amazing subtitle goes here",
+        fontSize: 20, fontFamily: styles.bodyFont, fontWeight: "400",
+        textAlign: "left", color: palette[2], lineHeight: 1.4,
+      },
+      {
+        id: uid(), type: "heading", visible: true,
+        x: 80, y: 330, width: 920, height: 160, rotation: 0,
+        content: "Amazing Catchy Title Goes Right Here!",
+        fontSize: 56, fontFamily: styles.headingFont, fontWeight: "700",
+        textAlign: "left", color: palette[3], accentColor: palette[1],
+        lineHeight: 1.15,
+      },
+      {
+        id: uid(), type: "body", visible: true,
+        x: 80, y: 510, width: 920, height: 60, rotation: 0,
+        content: "Your amazing description goes here.",
+        fontSize: 22, fontFamily: styles.bodyFont, fontWeight: "400",
+        textAlign: "left", color: palette[2], lineHeight: 1.5,
+      },
+    ],
+  };
+}
+
+export function createContentSlide(index: number, palette: string[], styles: GlobalStyles): Slide {
+  return {
+    id: uid(),
+    order: index,
+    slideType: "content",
+    layout: "default",
+    backgroundColor: palette[0],
+    backgroundPattern: "none",
+    patternOpacity: 10,
+    showSubtitle: false,
+    showTitle: true,
+    showDescription: true,
+    showImage: true,
+    showCta: false,
+    elements: [
+      {
+        id: uid(), type: "slideNumber", visible: true,
+        x: 460, y: 260, width: 60, height: 60, rotation: 0,
+        content: String(index),
+        fontSize: 24, fontFamily: styles.headingFont, fontWeight: "700",
+        textAlign: "center", color: palette[3],
+        backgroundColor: palette[1], borderRadius: 8, padding: 12,
+      },
+      {
+        id: uid(), type: "heading", visible: true,
+        x: 80, y: 350, width: 920, height: 80, rotation: 0,
+        content: "Section Title",
+        fontSize: 42, fontFamily: styles.headingFont, fontWeight: "700",
+        textAlign: "center", color: palette[3], lineHeight: 1.2,
+      },
+      {
+        id: uid(), type: "body", visible: true,
+        x: 80, y: 450, width: 920, height: 60, rotation: 0,
+        content: "Put your content here.",
+        fontSize: 22, fontFamily: styles.bodyFont, fontWeight: "400",
+        textAlign: "center", color: palette[2], lineHeight: 1.5,
+      },
+      {
+        id: uid(), type: "image", visible: true,
+        x: 140, y: 540, width: 800, height: 280, rotation: 0,
+        placeholder: "Click to add image",
+        borderRadius: 12, opacity: 1,
+      },
+    ],
+  };
+}
+
+export function createOutroSlide(total: number, palette: string[], styles: GlobalStyles): Slide {
+  return {
+    id: uid(),
+    order: total - 1,
+    slideType: "outro",
+    layout: "default",
+    backgroundColor: palette[0],
+    backgroundPattern: "noise",
+    patternOpacity: 8,
+    showSubtitle: true,
+    showTitle: true,
+    showDescription: false,
+    showImage: false,
+    showCta: true,
+    elements: [
+      {
+        id: uid(), type: "subtitle", visible: true,
+        x: 80, y: 280, width: 920, height: 40, rotation: 0,
+        content: "Your amazing subtitle goes here",
+        fontSize: 20, fontFamily: styles.bodyFont, fontWeight: "400",
+        textAlign: "left", color: palette[2], lineHeight: 1.4,
+      },
+      {
+        id: uid(), type: "heading", visible: true,
+        x: 80, y: 330, width: 920, height: 160, rotation: 0,
+        content: "Your amazing ending note goes here!",
+        fontSize: 52, fontFamily: styles.headingFont, fontWeight: "700",
+        textAlign: "left", color: palette[3], accentColor: palette[1],
+        lineHeight: 1.15,
+      },
+      {
+        id: uid(), type: "cta", visible: true,
+        x: 80, y: 520, width: 220, height: 52, rotation: 0,
+        content: "Call to Action",
+        fontSize: 18, fontFamily: styles.bodyFont, fontWeight: "600",
+        textAlign: "center", color: palette[0],
+        backgroundColor: palette[2], borderRadius: 8, padding: 14,
+      },
+    ],
+  };
+}
+
+export function generateSlides(count: number, palette: string[], styles: GlobalStyles): Slide[] {
+  const slides: Slide[] = [];
+  // First slide is always intro
+  slides.push(createIntroSlide(palette, styles));
+  // Middle slides are content (numbered 1 through count-2)
+  for (let i = 1; i < count - 1; i++) {
+    slides.push(createContentSlide(i, palette, styles));
+  }
+  // Last slide is always outro
+  if (count > 1) {
+    slides.push(createOutroSlide(count, palette, styles));
+  }
+  return slides.map((s, i) => ({ ...s, order: i }));
+}
+
+export function createDefaultGlobalStyles(): GlobalStyles {
+  return {
+    headingFont: "General Sans",
+    bodyFont: "General Sans",
+    headingFontSize: 48,
+    bodyFontSize: 22,
+    customFontSizes: false,
+    customFontPairing: false,
+    colorPalette: [FCTG_BRAND_COLORS.darkRum, FCTG_BRAND_COLORS.gold, FCTG_BRAND_COLORS.cream, FCTG_BRAND_COLORS.cream],
+    alternateColors: [FCTG_BRAND_COLORS.gold, FCTG_BRAND_COLORS.obsidian, FCTG_BRAND_COLORS.warmGold, FCTG_BRAND_COLORS.white],
+    alternateColorsEnabled: false,
+    brandingEnabled: true,
+    brandName: "From Chains To Glory",
+    brandHandle: "@fromchainstoglory",
+    brandColor: FCTG_BRAND_COLORS.gold,
+    brandOnlyIntroOutro: false,
+    brandBorder: false,
+    brandShadow: false,
+    brandCustomColor: false,
+    brandCustomColorValue: "#333333",
+    brandRoundness: 100,
+    brandCustomSize: false,
+    brandSizePreset: "medium",
+    slideNumberEnabled: true,
+    slideNumberStyle: "padded",
+    swipeIndicatorEnabled: true,
+    swipeText: "Next ▶",
+    swipeStyle: "chevron",
+    swipeIcon: "chevron",
+    swipeIntroOnly: true,
+    swipeShadow: false,
+    bookmarkEnabled: false,
+    decorativeElementsEnabled: true,
+    decorativeOpacity: 15,
+    decorativeRoundness: 50,
+    slideNumberShadow: false,
+    ctaShadow: true,
+    qrCodeEnabled: false,
+    watermarkEnabled: false,
+    watermarkText: "",
+    customFontFiles: [],
   };
 }
 
 export function createDefaultProject(): CarouselProject {
-  const palette = [FCTG_BRAND_COLORS.darkRum, FCTG_BRAND_COLORS.gold, FCTG_BRAND_COLORS.cream, FCTG_BRAND_COLORS.cream];
+  const styles = createDefaultGlobalStyles();
+  const palette = styles.colorPalette;
   return {
     name: "Untitled Carousel",
     platform: "instagram",
     width: 1080,
-    height: 1080,
-    slides: [
-      createDefaultSlide(0, palette),
-      createDefaultSlide(1, palette),
-      createDefaultSlide(2, palette),
-      createDefaultSlide(3, palette),
-      createDefaultSlide(4, palette),
-    ],
-    globalStyles: {
-      headingFont: "General Sans",
-      bodyFont: "General Sans",
-      headingFontSize: 48,
-      bodyFontSize: 24,
-      colorPalette: palette,
-      brandingEnabled: true,
-      brandName: "From Chains To Glory",
-      brandColor: FCTG_BRAND_COLORS.gold,
-      slideNumberEnabled: true,
-      slideNumberStyle: "padded",
-      swipeIndicatorEnabled: true,
-      swipeText: "Swipe →",
-    },
+    height: 1350,
+    slideCount: 5,
+    slides: generateSlides(5, palette, styles),
+    globalStyles: styles,
   };
 }

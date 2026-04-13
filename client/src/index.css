@@ -2,66 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
-/* FCTG Carousel Maker — PostNitro-inspired UI */
-/* Light mode: neutral gray workspace, clean UI */
+/* ═══════════════════════════════════════════════════════════════
+   FCTG Carousel Maker — Slate & Gold Theme
+   Inspired by: weathered stone, metallic chains, brass accents
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Slate/Rock Light Mode (default) — dark UI with stone texture feel */
 :root {
-  --button-outline: rgba(0, 0, 0, 0.1);
-  --badge-outline: rgba(0, 0, 0, 0.05);
-  --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(0, 0, 0, 0.03);
-  --elevate-2: rgba(0, 0, 0, 0.08);
+  --button-outline: rgba(212, 165, 55, 0.15);
+  --badge-outline: rgba(212, 165, 55, 0.1);
+  --opaque-button-border-intensity: -6;
+  --elevate-1: rgba(0, 0, 0, 0.15);
+  --elevate-2: rgba(0, 0, 0, 0.25);
 
-  --background: 0 0% 95%;
-  --foreground: 40 10% 12%;
-  --border: 40 5% 88%;
-  --card: 0 0% 100%;
-  --card-foreground: 40 10% 12%;
-  --card-border: 40 5% 90%;
+  /* Core surfaces — slate/concrete gray */
+  --background: 210 3% 28%;          /* #464849 — weathered concrete */
+  --foreground: 40 8% 88%;           /* #E2DDD5 — warm off-white text */
+  --border: 210 3% 22%;              /* #373839 — darker divider */
+  --card: 210 3% 23%;                /* #3A3B3D — panel surface */
+  --card-foreground: 40 8% 88%;
+  --card-border: 210 3% 20%;
 
-  --sidebar: 0 0% 100%;
-  --sidebar-foreground: 40 10% 12%;
-  --sidebar-border: 40 5% 90%;
-  --sidebar-primary: 40 70% 42%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 40 8% 94%;
-  --sidebar-accent-foreground: 40 10% 12%;
-  --sidebar-ring: 40 70% 42%;
+  /* Sidebar — slightly darker slate */
+  --sidebar: 210 4% 18%;             /* #2D2E30 */
+  --sidebar-foreground: 40 8% 88%;
+  --sidebar-border: 210 3% 15%;
+  --sidebar-primary: 40 70% 52%;     /* Gold — #D4A537 */
+  --sidebar-primary-foreground: 210 4% 8%;
+  --sidebar-accent: 210 3% 24%;
+  --sidebar-accent-foreground: 40 8% 88%;
+  --sidebar-ring: 40 70% 52%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 40 10% 12%;
-  --popover-border: 40 5% 88%;
+  /* Popover */
+  --popover: 210 4% 20%;
+  --popover-foreground: 40 8% 88%;
+  --popover-border: 210 3% 16%;
 
-  --primary: 40 70% 42%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 40 5% 93%;
-  --secondary-foreground: 40 10% 12%;
-  --muted: 40 4% 92%;
-  --muted-foreground: 40 4% 46%;
-  --accent: 40 8% 93%;
-  --accent-foreground: 40 10% 12%;
-  --destructive: 0 72% 51%;
+  /* Primary — FCTG Gold */
+  --primary: 40 70% 52%;             /* #D4A537 gold */
+  --primary-foreground: 210 4% 6%;   /* Very dark text on gold */
+  /* Secondary — stone lighter */
+  --secondary: 210 3% 32%;
+  --secondary-foreground: 40 8% 88%;
+  /* Muted — subtle stone */
+  --muted: 210 3% 26%;
+  --muted-foreground: 40 4% 56%;
+  /* Accent — warm stone */
+  --accent: 210 3% 30%;
+  --accent-foreground: 40 8% 88%;
+  /* CTA Orange */
+  --destructive: 22 78% 52%;        /* #E76F21 — FCTG CTA orange */
   --destructive-foreground: 0 0% 100%;
-  --input: 40 5% 80%;
-  --ring: 40 70% 42%;
+  --input: 210 3% 32%;
+  --ring: 40 70% 52%;
 
-  --chart-1: 40 70% 42%;
-  --chart-2: 183 98% 22%;
-  --chart-3: 20 73% 34%;
-  --chart-4: 103 56% 31%;
-  --chart-5: 320 57% 40%;
+  /* Charts */
+  --chart-1: 40 70% 52%;
+  --chart-2: 22 78% 52%;
+  --chart-3: 160 78% 16%;
+  --chart-4: 40 30% 40%;
+  --chart-5: 0 55% 55%;
 
   --font-sans: 'General Sans', 'Inter', sans-serif;
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --spacing: 0.25rem;
 
-  --shadow-2xs: 0px 1px 2px hsl(0 0% 0% / 0.04);
-  --shadow-xs: 0px 1px 3px hsl(0 0% 0% / 0.06);
-  --shadow-sm: 0px 2px 4px hsl(0 0% 0% / 0.06);
-  --shadow: 0px 4px 8px hsl(0 0% 0% / 0.08);
-  --shadow-md: 0px 6px 12px hsl(0 0% 0% / 0.08);
-  --shadow-lg: 0px 8px 24px hsl(0 0% 0% / 0.1);
-  --shadow-xl: 0px 16px 48px hsl(0 0% 0% / 0.12);
-  --shadow-2xl: 0px 24px 64px hsl(0 0% 0% / 0.14);
+  --shadow-2xs: 0px 1px 2px hsl(0 0% 0% / 0.15);
+  --shadow-xs: 0px 1px 3px hsl(0 0% 0% / 0.25);
+  --shadow-sm: 0px 2px 4px hsl(0 0% 0% / 0.25);
+  --shadow: 0px 4px 8px hsl(0 0% 0% / 0.3);
+  --shadow-md: 0px 6px 12px hsl(0 0% 0% / 0.3);
+  --shadow-lg: 0px 8px 24px hsl(0 0% 0% / 0.35);
+  --shadow-xl: 0px 16px 48px hsl(0 0% 0% / 0.4);
+  --shadow-2xl: 0px 24px 64px hsl(0 0% 0% / 0.5);
   --tracking-normal: 0em;
 
   --primary-border: hsl(var(--primary));
@@ -71,63 +84,68 @@
   --destructive-border: hsl(var(--destructive));
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-accent-border: hsl(var(--sidebar-accent));
+
+  /* Gold metallic gradient for special elements */
+  --gold-gradient: linear-gradient(135deg, #B8944F, #D4A537, #FDF5E2, #D4A537, #B8944F);
+  --gold-glint: linear-gradient(90deg, #C49A3C, #D4A537, #FFFFFF, #D4A537, #C49A3C);
+  --chrome-gradient: linear-gradient(180deg, #B0B0B0, #D8D8D8, #FFFFFF, #D8D8D8, #909090);
 }
 
-/* Dark mode */
+/* Dark mode — even deeper slate */
 .dark {
-  --button-outline: rgba(255, 255, 255, 0.1);
-  --badge-outline: rgba(255, 255, 255, 0.05);
-  --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255, 255, 255, 0.04);
-  --elevate-2: rgba(255, 255, 255, 0.09);
+  --button-outline: rgba(212, 165, 55, 0.12);
+  --badge-outline: rgba(212, 165, 55, 0.08);
+  --opaque-button-border-intensity: 6;
+  --elevate-1: rgba(0, 0, 0, 0.25);
+  --elevate-2: rgba(0, 0, 0, 0.4);
 
-  --background: 40 6% 9%;
-  --foreground: 40 4% 88%;
-  --border: 40 4% 18%;
-  --card: 40 4% 12%;
-  --card-foreground: 40 4% 88%;
-  --card-border: 40 4% 16%;
+  --background: 210 4% 14%;
+  --foreground: 40 6% 85%;
+  --border: 210 3% 18%;
+  --card: 210 4% 16%;
+  --card-foreground: 40 6% 85%;
+  --card-border: 210 3% 14%;
 
-  --sidebar: 40 6% 11%;
-  --sidebar-foreground: 40 4% 88%;
-  --sidebar-border: 40 4% 16%;
-  --sidebar-primary: 40 60% 52%;
-  --sidebar-primary-foreground: 40 10% 8%;
-  --sidebar-accent: 40 4% 16%;
-  --sidebar-accent-foreground: 40 4% 88%;
-  --sidebar-ring: 40 60% 52%;
+  --sidebar: 210 5% 11%;
+  --sidebar-foreground: 40 6% 85%;
+  --sidebar-border: 210 4% 14%;
+  --sidebar-primary: 40 65% 50%;
+  --sidebar-primary-foreground: 210 5% 6%;
+  --sidebar-accent: 210 4% 18%;
+  --sidebar-accent-foreground: 40 6% 85%;
+  --sidebar-ring: 40 65% 50%;
 
-  --popover: 40 4% 14%;
-  --popover-foreground: 40 4% 88%;
-  --popover-border: 40 4% 20%;
+  --popover: 210 4% 14%;
+  --popover-foreground: 40 6% 85%;
+  --popover-border: 210 3% 18%;
 
-  --primary: 40 60% 52%;
-  --primary-foreground: 40 10% 8%;
-  --secondary: 40 4% 18%;
-  --secondary-foreground: 40 4% 88%;
-  --muted: 40 3% 20%;
-  --muted-foreground: 40 3% 55%;
-  --accent: 40 4% 18%;
-  --accent-foreground: 40 4% 88%;
-  --destructive: 0 72% 51%;
+  --primary: 40 65% 50%;
+  --primary-foreground: 210 5% 6%;
+  --secondary: 210 3% 20%;
+  --secondary-foreground: 40 6% 85%;
+  --muted: 210 3% 18%;
+  --muted-foreground: 40 3% 50%;
+  --accent: 210 3% 20%;
+  --accent-foreground: 40 6% 85%;
+  --destructive: 22 78% 52%;
   --destructive-foreground: 0 0% 100%;
-  --input: 40 4% 26%;
-  --ring: 40 60% 52%;
+  --input: 210 3% 24%;
+  --ring: 40 65% 50%;
 
-  --chart-1: 40 60% 52%;
-  --chart-2: 188 35% 47%;
-  --chart-3: 20 53% 48%;
-  --chart-4: 97 43% 47%;
-  --chart-5: 320 47% 60%;
+  --chart-1: 40 65% 50%;
+  --chart-2: 22 70% 50%;
+  --chart-3: 160 60% 22%;
+  --chart-4: 40 25% 35%;
+  --chart-5: 0 50% 50%;
 
-  --shadow-2xs: 0px 1px 2px hsl(0 0% 0% / 0.12);
-  --shadow-xs: 0px 1px 3px hsl(0 0% 0% / 0.2);
-  --shadow-sm: 0px 2px 4px hsl(0 0% 0% / 0.2);
-  --shadow: 0px 4px 8px hsl(0 0% 0% / 0.25);
-  --shadow-md: 0px 6px 12px hsl(0 0% 0% / 0.3);
-  --shadow-lg: 0px 8px 24px hsl(0 0% 0% / 0.35);
-  --shadow-xl: 0px 16px 48px hsl(0 0% 0% / 0.4);
-  --shadow-2xl: 0px 24px 64px hsl(0 0% 0% / 0.5);
+  --shadow-2xs: 0px 1px 2px hsl(0 0% 0% / 0.2);
+  --shadow-xs: 0px 1px 3px hsl(0 0% 0% / 0.35);
+  --shadow-sm: 0px 2px 4px hsl(0 0% 0% / 0.35);
+  --shadow: 0px 4px 8px hsl(0 0% 0% / 0.4);
+  --shadow-md: 0px 6px 12px hsl(0 0% 0% / 0.45);
+  --shadow-lg: 0px 8px 24px hsl(0 0% 0% / 0.5);
+  --shadow-xl: 0px 16px 48px hsl(0 0% 0% / 0.55);
+  --shadow-2xl: 0px 24px 64px hsl(0 0% 0% / 0.65);
 
   --primary-border: hsl(var(--primary));
   --secondary-border: hsl(var(--secondary));
@@ -147,13 +165,80 @@
   }
 }
 
+/* ─── Stone/Concrete texture overlay ─── */
+.stone-texture {
+  position: relative;
+}
+.stone-texture::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E") repeat;
+  border-radius: inherit;
+}
+.stone-texture > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Gold metallic text effect ─── */
+.text-gold-metallic {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+}
+
+/* ─── Chrome/Silver metallic text effect ─── */
+.text-chrome {
+  background: var(--chrome-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* ─── Gold glint animation ─── */
+@keyframes goldGlint {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.text-gold-animated {
+  background: linear-gradient(90deg, #C49A3C, #D4A537, #FFFFFF, #D4A537, #C49A3C);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: goldGlint 6s linear infinite;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+}
+
+/* ─── Gold border glow ─── */
+.border-gold-glow {
+  border-color: #D4A537;
+  box-shadow: 0 0 8px rgba(212, 165, 55, 0.3), inset 0 0 4px rgba(212, 165, 55, 0.1);
+}
+
+/* ─── Brass plate effect (for badges/labels) ─── */
+.brass-plate {
+  background: linear-gradient(180deg, #D4A537 0%, #B8944F 40%, #C49A3C 60%, #D4A537 100%);
+  border: 1px solid #B8944F;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  color: #08080A;
+  font-weight: 700;
+}
+
 /* Canvas workspace grid background */
 .canvas-workspace {
   background-image: radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling — gold tinted */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -161,11 +246,11 @@
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: hsl(40 30% 35%);
   border-radius: 3px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
+  background: hsl(40 50% 45%);
 }
 
 /* Slide hover effects */
@@ -173,10 +258,10 @@
   transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
 .slide-card:hover {
-  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.15);
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3);
 }
 .slide-card.active {
-  box-shadow: 0 0 0 2px hsl(var(--primary)), 0 8px 32px hsl(0 0% 0% / 0.15);
+  box-shadow: 0 0 0 2px hsl(var(--primary)), 0 8px 32px hsl(0 0% 0% / 0.3);
 }
 
 /* Inline text editing */
@@ -191,7 +276,7 @@
 }
 .color-swatch:hover {
   transform: scale(1.1);
-  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.2);
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.3);
 }
 
 /* Panel transitions */

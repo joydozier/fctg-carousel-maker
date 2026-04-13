@@ -4,13 +4,16 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import CarouselEditor from "@/pages/carousel-editor";
+import HomeDashboard from "@/pages/home-dashboard";
 import NotFound from "@/pages/not-found";
 
 function AppRouter() {
   return (
     <Router hook={useHashLocation}>
       <Switch>
-        <Route path="/" component={CarouselEditor} />
+        <Route path="/" component={HomeDashboard} />
+        <Route path="/editor/new" component={CarouselEditor} />
+        <Route path="/editor/:id" component={CarouselEditor} />
         <Route component={NotFound} />
       </Switch>
     </Router>

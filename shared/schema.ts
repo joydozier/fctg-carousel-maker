@@ -1,35 +1,71 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const projects = sqliteTable("projects", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  platform: text("platform").notNull().default("instagram"), // instagram, linkedin, tiktok, facebook, x
-  width: integer("width").notNull().default(1080),
-  height: integer("height").notNull().default(1080),
-  slides: text("slides").notNull().default("[]"), // JSON array of slide objects
-  globalStyles: text("global_styles").notNull().default("{}"), // JSON: fonts, colors, branding
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
+/* ─── Project type (matches carousel_projects table in Supabase) ─── */
+export interface Project {
+  id: number;
+  name: string;
+  platform: string;
+  width: number;
+  height: number;
+  slides: string;          // JSON string
+  globalStyles: string;    // JSON string
+  isTemplate: number;      // 0 or 1
+  isBuiltIn: number;       // 0 or 1
+  templateCategory: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InsertProject {
+  name: string;
+  platform: string;
+  width: number;
+  height: number;
+  slides: string;
+  globalStyles: string;
+  isTemplate?: number;
+  isBuiltIn?: number;
+  templateCategory?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ─── Color Palette type (matches carousel_palettes table in Supabase) ─── */
+export interface ColorPalette {
+  id: number;
+  name: string;
+  colors: string;          // JSON string
+  isBuiltIn: number;       // 0 or 1
+}
+
+export interface InsertColorPalette {
+  name: string;
+  colors: string;
+  isBuiltIn?: number;
+}
+
+/* ─── Zod schemas for API validation ─── */
+export const insertProjectSchema = z.object({
+  name: z.string(),
+  platform: z.string().default("instagram"),
+  width: z.number().default(1080),
+  height: z.number().default(1080),
+  slides: z.string().default("[]"),
+  globalStyles: z.string().default("{}"),
+  isTemplate: z.number().default(0),
+  isBuiltIn: z.number().default(0),
+  templateCategory: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
-export const colorPalettes = sqliteTable("color_palettes", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  colors: text("colors").notNull(), // JSON array of hex colors
-  isBuiltIn: integer("is_built_in").notNull().default(0),
+export const insertColorPaletteSchema = z.object({
+  name: z.string(),
+  colors: z.string(),
+  isBuiltIn: z.number().default(0),
 });
 
-export const insertProjectSchema = createInsertSchema(projects).omit({ id: true });
-export const insertColorPaletteSchema = createInsertSchema(colorPalettes).omit({ id: true });
-
-export type Project = typeof projects.$inferSelect;
-export type InsertProject = z.infer<typeof insertProjectSchema>;
-export type ColorPalette = typeof colorPalettes.$inferSelect;
-export type InsertColorPalette = z.infer<typeof insertColorPaletteSchema>;
-
-// Slide type definitions for the frontend
+/* ─── Slide type definitions for the frontend ─── */
 export interface SlideElement {
   id: string;
   type: "text" | "image" | "shape" | "icon";

@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
+import { seedPalettes } from "./seed";
 import { createServer } from "http";
 
 const app = express();
@@ -61,6 +62,9 @@ app.use((req, res, next) => {
 
 (async () => {
   await registerRoutes(httpServer, app);
+
+  // Seed built-in palettes into Supabase (no-op if already seeded)
+  seedPalettes().catch((err) => console.error("Palette seed error:", err));
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
