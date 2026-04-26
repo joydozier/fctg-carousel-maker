@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { Slide, SlideElement, CarouselProject } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { GripVertical, ImagePlus, Film } from "lucide-react";
+import { ComparisonSlide } from "@/components/ComparisonSlide";
 
 interface SlideRendererProps {
   slide: Slide;
@@ -937,21 +938,31 @@ export function SlideRenderer({ slide, project, store, slideIndex, isSelected, p
         </div>
       )}
 
-      {/* Slide elements — rendered in array order (first = back, last = front) */}
-      {slide.elements
-        .filter((el) => el.visible !== false)
-        .map((element) => (
-          <ElementRenderer
-            key={element.id}
-            element={element}
-            slideId={slide.id}
-            store={store}
-            isSlideSelected={isSelected}
-            previewMode={previewMode}
-            slideScale={slideScale}
-            onContextMenu={handleContextMenu}
-          />
-        ))}
+      {/* Comparison layout — swap the elements array for a dedicated component */}
+      {slide.layout === "comparison" ? (
+        <ComparisonSlide
+          slide={slide}
+          designWidth={project.width}
+          designHeight={project.height}
+          focusTarget={(slide as any).__comparisonFocus ?? null}
+        />
+      ) : (
+        /* Slide elements — rendered in array order (first = back, last = front) */
+        slide.elements
+          .filter((el) => el.visible !== false)
+          .map((element) => (
+            <ElementRenderer
+              key={element.id}
+              element={element}
+              slideId={slide.id}
+              store={store}
+              isSlideSelected={isSelected}
+              previewMode={previewMode}
+              slideScale={slideScale}
+              onContextMenu={handleContextMenu}
+            />
+          ))
+      )}
 
       {/* Slide number badge (for content slides using global style) */}
       {globalStyles.slideNumberEnabled && slide.slideType === "content" && (

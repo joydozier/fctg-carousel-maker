@@ -7,8 +7,9 @@ import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, ArrowLeft, ArrowRight, S
 import { cn } from "@/lib/utils";
 import { SlideRenderer } from "@/components/slide-renderer";
 import { MediaModal } from "@/components/media-modal";
+import { ComparisonPanel } from "@/components/panels/comparison-panel";
 import type { Slide, SlideLayout, VideoSplitLayout } from "@/lib/types";
-import { getVideoLayoutWarning } from "@/lib/types";
+import { getVideoLayoutWarning, applyComparisonLayout } from "@/lib/types";
 import { AlertTriangle, Film, ArrowUpFromLine, ArrowDownFromLine, ArrowLeftFromLine, ArrowRightFromLine, Maximize } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
@@ -37,6 +38,7 @@ const LAYOUT_TABS: { value: SlideLayout; label: string }[] = [
   { value: "testimonial", label: "Testimonial" },
   { value: "bento-grid", label: "Bento Grid" },
   { value: "video", label: "Video" },
+  { value: "comparison", label: "Comparison" },
 ];
 
 /* ── Video split layout definitions ── */
@@ -268,6 +270,14 @@ function ConfigureModal({
   const layout = slide.layout || "default";
 
   const setLayout = (l: SlideLayout) => {
+    if (l === "comparison") {
+      // Hydrate comparison fields the first time the layout is selected
+      if (!slide.comparisonGlobal) {
+        const hydrated = applyComparisonLayout(slide, "pro-con");
+        updateSlide(slide.id, hydrated);
+        return;
+      }
+    }
     updateSlide(slide.id, { layout: l });
   };
 
@@ -320,6 +330,8 @@ function ConfigureModal({
           { key: "showVideo", label: "Video" },
           { key: "showCta", label: "CTA" },
         ];
+      case "comparison":
+        return []; // comparison has its own dedicated control panel
       default:
         return [
           { key: "showSubtitle", label: "Subtitle" },
@@ -578,7 +590,13 @@ function ConfigureModal({
               )}
             </div>
 
-            {/* Background Image Overlay section */}
+            {/* ── Comparison-specific control panel ── */}
+            {layout === "comparison" && (
+              <ComparisonPanel slide={slide} updateSlide={updateSlide} />
+            )}
+
+            {/* Background Image Overlay section — hidden for comparison (its own bg system) */}
+            {layout !== "comparison" && (
             <div className="bg-[#2D2E30] rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-semibold text-[#E2DDD5] flex items-center gap-2">
                 <Layers className="w-3.5 h-3.5 text-[#B8944F]" />
@@ -663,8 +681,10 @@ function ConfigureModal({
                 </label>
               )}
             </div>
+            )}
 
-            {/* Content Elements section */}
+            {/* Content Elements section — hidden for comparison */}
+            {layout !== "comparison" && getContentElements().length > 0 && (
             <div className="bg-[#2D2E30] rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-semibold text-[#E2DDD5]">Content Elements</h3>
               <div className="space-y-2.5">
@@ -680,6 +700,7 @@ function ConfigureModal({
                 ))}
               </div>
             </div>
+            )}
           </div>
 
           {/* Right — Live Preview */}

@@ -39,7 +39,49 @@ export interface SlideElement {
   logoFit?: "contain" | "cover" | "fill"; // how the logo fits its container, default "contain"
 }
 
-export type SlideLayout = "default" | "quote-card" | "infographics" | "testimonial" | "bento-grid" | "video";
+export type SlideLayout = "default" | "quote-card" | "infographics" | "testimonial" | "bento-grid" | "video" | "comparison";
+
+// ─── Comparison Slide Types ───────────────────────────────────────────────
+// 8 curated universal icons — keys map to inline SVGs in <ComparisonSlide />
+export type ComparisonIcon = "check" | "x" | "alert" | "idea" | "star" | "trend-up" | "heart" | "user";
+export type ComparisonTheme = "custom" | "pro-con" | "before-after" | "competitor";
+export type ComparisonDividerStyle = "glow" | "solid" | "none";
+
+export interface ComparisonSide {
+  subheading: string;
+  items: string[];
+  /** rgba(...) or #hex — used as the glass-tinted background */
+  backgroundColor: string;
+  textColor: string;
+  /** key from ComparisonIcon — applied to every list bullet on this side */
+  icon: ComparisonIcon;
+}
+
+export interface ComparisonGlobalSettings {
+  fontFamily: string;
+  dividerStyle: ComparisonDividerStyle;
+  /** Neon-glow divider color (used when dividerStyle === "glow") */
+  dividerGlowColor: string;
+  theme: ComparisonTheme;
+  /** Optional headline at the top of the slide */
+  title?: string;
+}
+
+/** 12 designer-approved high-contrast swatches for the comparison editor */
+export const COMPARISON_SWATCHES: { name: string; value: string }[] = [
+  { name: "Obsidian", value: "#08080A" },
+  { name: "Dark Rum", value: "#1A1410" },
+  { name: "Ink Blue", value: "#0B1E3F" },
+  { name: "Royal Blue", value: "#1E40AF" },
+  { name: "Forest", value: "#064E3B" },
+  { name: "Emerald", value: "#059669" },
+  { name: "Crimson", value: "#991B1B" },
+  { name: "Coral", value: "#DC2626" },
+  { name: "Gold", value: "#D4A537" },
+  { name: "Cream", value: "#FDFBF7" },
+  { name: "Slate", value: "#334155" },
+  { name: "Pure White", value: "#FFFFFF" },
+];
 
 export interface Slide {
   id: string;
@@ -80,6 +122,10 @@ export interface Slide {
   videoSplitLayout?: VideoSplitLayout;
   videoSplitRatio?: number; // 0.3 to 0.8 — how much space the video takes
   showVideo?: boolean;
+  // ── Comparison layout fields (used when layout === "comparison") ──
+  comparisonGlobal?: ComparisonGlobalSettings;
+  comparisonLeft?: ComparisonSide;
+  comparisonRight?: ComparisonSide;
 }
 
 export interface CarouselProject {
@@ -437,6 +483,110 @@ export function createDefaultGlobalStyles(): GlobalStyles {
     watermarkEnabled: false,
     watermarkText: "",
     customFontFiles: [],
+  };
+}
+
+// ─── Comparison Slide factory + theme presets ──────────────────────────────
+export function buildComparisonTheme(theme: ComparisonTheme): {
+  global: ComparisonGlobalSettings;
+  left: ComparisonSide;
+  right: ComparisonSide;
+} {
+  switch (theme) {
+    case "pro-con":
+      return {
+        global: { fontFamily: "General Sans", dividerStyle: "glow", dividerGlowColor: "#D4A537", theme: "pro-con", title: "Pros vs Cons" },
+        left: {
+          subheading: "Pros",
+          items: ["Fast results", "Easy to use", "Great support"],
+          backgroundColor: "rgba(5, 150, 105, 0.18)",
+          textColor: "#FDFBF7",
+          icon: "check",
+        },
+        right: {
+          subheading: "Cons",
+          items: ["High cost", "Steep learning curve", "Limited integrations"],
+          backgroundColor: "rgba(220, 38, 38, 0.18)",
+          textColor: "#FDFBF7",
+          icon: "x",
+        },
+      };
+    case "before-after":
+      return {
+        global: { fontFamily: "General Sans", dividerStyle: "glow", dividerGlowColor: "#D4A537", theme: "before-after", title: "Before vs After" },
+        left: {
+          subheading: "Before",
+          items: ["Stuck in old patterns", "Reactive, not proactive", "Burned out"],
+          backgroundColor: "rgba(51, 65, 85, 0.30)",
+          textColor: "#FDFBF7",
+          icon: "alert",
+        },
+        right: {
+          subheading: "After",
+          items: ["Clear vision", "Confident decisions", "Sustainable energy"],
+          backgroundColor: "rgba(212, 165, 55, 0.20)",
+          textColor: "#FDFBF7",
+          icon: "trend-up",
+        },
+      };
+    case "competitor":
+      return {
+        global: { fontFamily: "General Sans", dividerStyle: "solid", dividerGlowColor: "#60A5FA", theme: "competitor", title: "Why Choose Us" },
+        left: {
+          subheading: "Us",
+          items: ["Proven framework", "24/7 support", "Custom strategy"],
+          backgroundColor: "rgba(30, 64, 175, 0.22)",
+          textColor: "#FDFBF7",
+          icon: "star",
+        },
+        right: {
+          subheading: "Them",
+          items: ["Generic templates", "Slow response", "One-size-fits-all"],
+          backgroundColor: "rgba(11, 30, 63, 0.40)",
+          textColor: "#FDFBF7",
+          icon: "user",
+        },
+      };
+    case "custom":
+    default:
+      return {
+        global: { fontFamily: "General Sans", dividerStyle: "glow", dividerGlowColor: "#D4A537", theme: "custom", title: "Comparison" },
+        left: {
+          subheading: "Option A",
+          items: ["Point one", "Point two", "Point three"],
+          backgroundColor: "rgba(212, 165, 55, 0.18)",
+          textColor: "#FDFBF7",
+          icon: "check",
+        },
+        right: {
+          subheading: "Option B",
+          items: ["Point one", "Point two", "Point three"],
+          backgroundColor: "rgba(8, 8, 10, 0.45)",
+          textColor: "#FDFBF7",
+          icon: "star",
+        },
+      };
+  }
+}
+
+/** Convert a content slide into a comparison slide (preserves id/order/background) */
+export function applyComparisonLayout(slide: Slide, theme: ComparisonTheme = "pro-con"): Slide {
+  const preset = buildComparisonTheme(theme);
+  return {
+    ...slide,
+    layout: "comparison",
+    // Keep a dark, premium backdrop so the glass effect reads correctly
+    backgroundColor: slide.backgroundColor || "#08080A",
+    backgroundGradient: slide.backgroundGradient || "linear-gradient(135deg, #08080A 0%, #1A1410 60%, #433B2B 100%)",
+    elements: [],
+    showSubtitle: false,
+    showTitle: true,
+    showDescription: false,
+    showImage: false,
+    showCta: false,
+    comparisonGlobal: preset.global,
+    comparisonLeft: preset.left,
+    comparisonRight: preset.right,
   };
 }
 
