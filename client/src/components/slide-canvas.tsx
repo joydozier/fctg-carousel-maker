@@ -935,13 +935,14 @@ export function SlideCanvas({ store, activeTopPanel, activeLeftPanel, setActiveL
         ))}
       </div>
 
-      {/* Navigation — prominent gold pill buttons. Always rendered so users see
-          the full nav surface; disabled state at start/end of deck. */}
+      {/* Navigation — prominent gold pill buttons, anchored to the bottom of
+          the canvas so they don't overlap slide content. Always rendered;
+          disabled state at start/end of deck. */}
       <button
         onClick={scrollPrev}
         disabled={selectedSlideIndex <= 0}
         className={cn(
-          "absolute left-20 top-1/2 -translate-y-1/2 z-30 flex items-center gap-1.5 px-4 h-11 rounded-full font-semibold text-sm transition-all",
+          "absolute left-20 bottom-6 z-30 flex items-center gap-1.5 px-4 h-11 rounded-full font-semibold text-sm transition-all",
           "shadow-lg shadow-black/40 border-2",
           selectedSlideIndex > 0
             ? "bg-[#D4A537] text-[#08080A] border-[#B8944F] hover:bg-[#E0B547] hover:scale-105 active:scale-100"
@@ -959,7 +960,7 @@ export function SlideCanvas({ store, activeTopPanel, activeLeftPanel, setActiveL
         onClick={scrollNext}
         disabled={selectedSlideIndex >= project.slides.length - 1}
         className={cn(
-          "absolute right-4 top-1/2 -translate-y-1/2 z-30 flex items-center gap-1.5 px-4 h-11 rounded-full font-semibold text-sm transition-all",
+          "absolute right-4 bottom-6 z-30 flex items-center gap-1.5 px-4 h-11 rounded-full font-semibold text-sm transition-all",
           "shadow-lg shadow-black/40 border-2",
           selectedSlideIndex < project.slides.length - 1
             ? "bg-[#D4A537] text-[#08080A] border-[#B8944F] hover:bg-[#E0B547] hover:scale-105 active:scale-100"
