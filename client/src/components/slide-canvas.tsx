@@ -860,6 +860,24 @@ export function SlideCanvas({ store, activeTopPanel, activeLeftPanel, setActiveL
     if (selectedSlideIndex < project.slides.length - 1) handleSlideClick(selectedSlideIndex + 1);
   };
 
+  // Keyboard navigation — ← / → move between slides. We bail when the user is
+  // typing in an input/textarea/contenteditable so editing text doesn't shift slides.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        const tag = t.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        if (t.isContentEditable) return;
+      }
+      if (e.key === "ArrowLeft") scrollPrev();
+      else scrollNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedSlideIndex, project.slides.length]);
+
   const handleMediaSelect = (value: string, slideIndex: number) => {
     const slide = project.slides[slideIndex];
     if (!slide) return;
@@ -917,26 +935,43 @@ export function SlideCanvas({ store, activeTopPanel, activeLeftPanel, setActiveL
         ))}
       </div>
 
-      {/* Navigation arrow — left */}
-      {selectedSlideIndex > 0 && (
-        <button
-          onClick={scrollPrev}
-          className="absolute left-16 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-card/80 border shadow-sm flex items-center justify-center hover:bg-accent transition-colors"
-          data-testid="nav-prev"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-      )}
-      {/* Navigation arrow — right */}
-      {selectedSlideIndex < project.slides.length - 1 && (
-        <button
-          onClick={scrollNext}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-card/80 border shadow-sm flex items-center justify-center hover:bg-accent transition-colors"
-          data-testid="nav-next"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      )}
+      {/* Navigation — prominent gold pill buttons. Always rendered so users see
+          the full nav surface; disabled state at start/end of deck. */}
+      <button
+        onClick={scrollPrev}
+        disabled={selectedSlideIndex <= 0}
+        className={cn(
+          "absolute left-20 top-1/2 -translate-y-1/2 z-30 flex items-center gap-1.5 px-4 h-11 rounded-full font-semibold text-sm transition-all",
+          "shadow-lg shadow-black/40 border-2",
+          selectedSlideIndex > 0
+            ? "bg-[#D4A537] text-[#08080A] border-[#B8944F] hover:bg-[#E0B547] hover:scale-105 active:scale-100"
+            : "bg-[#3A3B3D] text-[#5A5B5D] border-[#4A4B4D] cursor-not-allowed opacity-60"
+        )}
+        title="Previous slide (←)"
+        aria-label="Previous slide"
+        data-testid="nav-prev"
+      >
+        <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
+        <span>Prev</span>
+      </button>
+
+      <button
+        onClick={scrollNext}
+        disabled={selectedSlideIndex >= project.slides.length - 1}
+        className={cn(
+          "absolute right-4 top-1/2 -translate-y-1/2 z-30 flex items-center gap-1.5 px-4 h-11 rounded-full font-semibold text-sm transition-all",
+          "shadow-lg shadow-black/40 border-2",
+          selectedSlideIndex < project.slides.length - 1
+            ? "bg-[#D4A537] text-[#08080A] border-[#B8944F] hover:bg-[#E0B547] hover:scale-105 active:scale-100"
+            : "bg-[#3A3B3D] text-[#5A5B5D] border-[#4A4B4D] cursor-not-allowed opacity-60"
+        )}
+        title="Next slide (→)"
+        aria-label="Next slide"
+        data-testid="nav-next"
+      >
+        <span>Next</span>
+        <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
+      </button>
 
       {/* Filmstrip slides area */}
       <div

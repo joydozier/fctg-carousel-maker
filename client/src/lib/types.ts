@@ -335,12 +335,33 @@ export const FONT_PAIRS: { heading: string; body: string; label: string }[] = [
 ];
 
 export const FCTG_BRAND_COLORS = {
+  // Core brand
   darkRum: "#433B2B",
   obsidian: "#08080A",
   gold: "#D4A537",
   warmGold: "#B8944F",
   cream: "#FDFBF7",
   white: "#FFFFFF",
+  // Extended brand from FCTG-Brand-Colors.docx
+  orangeCTA: "#E76F21",
+  emerald: "#043927",
+  slateGray: "#606060",
+  brightGold: "#D4AF37",
+  antiqueGold: "#C49A3C",
+  lightGold: "#F0D78C",
+  goldCream: "#FDF5E2",
+  goldTint: "#FDF8EC",
+  hoverGold: "#DBB68C",
+  offWhite: "#F5F5F5",
+  warmWhite: "#FFFBF0",
+  grayWhite: "#F3F3F3",
+  charcoal: "#2D2D2D",
+  burntOrange: "#CC5500",
+  deepEmerald: "#065238",
+  darkLeather: "#614536",
+  coralRed: "#FF6B6B",
+  darkGold: "#B8860B",
+  sageGreen: "#3F494A",
 };
 
 // ---- Slide Generators by Type ----
@@ -502,8 +523,10 @@ export function createDefaultGlobalStyles(): GlobalStyles {
     bodyFontSize: 22,
     customFontSizes: false,
     customFontPairing: false,
-    colorPalette: [FCTG_BRAND_COLORS.darkRum, FCTG_BRAND_COLORS.gold, FCTG_BRAND_COLORS.cream, FCTG_BRAND_COLORS.cream],
-    alternateColors: [FCTG_BRAND_COLORS.gold, FCTG_BRAND_COLORS.obsidian, FCTG_BRAND_COLORS.warmGold, FCTG_BRAND_COLORS.white],
+    // Default palette: Cream background, Gold accent, Charcoal body text, Dark Rum heading.
+    // Lighter, more neutral starting canvas — users can switch to dark themes via the Combinations tab.
+    colorPalette: [FCTG_BRAND_COLORS.cream, FCTG_BRAND_COLORS.gold, FCTG_BRAND_COLORS.charcoal, FCTG_BRAND_COLORS.darkRum],
+    alternateColors: [FCTG_BRAND_COLORS.gold, FCTG_BRAND_COLORS.darkRum, FCTG_BRAND_COLORS.warmGold, FCTG_BRAND_COLORS.cream],
     alternateColorsEnabled: false,
     brandingEnabled: true,
     brandName: "From Chains To Glory",
