@@ -2,8 +2,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { Slide, SlideElement, CarouselProject } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { GripVertical, ImagePlus, Film } from "lucide-react";
+import { GripVertical, ImagePlus, Film, Bold, Italic, Pipette } from "lucide-react";
 import { ComparisonSlide } from "@/components/ComparisonSlide";
+import { BRAND_FAMILIES } from "@/lib/brand-palettes";
 
 interface SlideRendererProps {
   slide: Slide;
@@ -86,6 +87,172 @@ interface ContextMenuState {
   elementId: string;
 }
 
+// ─── Floating Inline Text Toolbar ─────────────────────────────────────────────
+// Sits just above a selected text-like element. Lets the user:
+//   • Apply FCTG brand colors (or any hex) to the current text selection
+//     (via document.execCommand('foreColor')) — falls back to recoloring the
+//     entire element when no caret/selection is active.
+//   • Toggle bold / italic on the whole element.
+function FloatingTextToolbar({
+  element,
+  slideId,
+  updateElement,
+  editRef,
+  isEditing,
+}: {
+  element: SlideElement;
+  slideId: string;
+  updateElement: (slideId: string, elementId: string, patch: Partial<SlideElement>) => void;
+  editRef: React.RefObject<HTMLDivElement>;
+  isEditing: boolean;
+}) {
+  // Only show on text-like elements
+  const isTextLike =
+    element.type === "heading" ||
+    element.type === "subtitle" ||
+    element.type === "body" ||
+    element.type === "cta";
+  if (!isTextLike) return null;
+
+  // FCTG core swatches (8 primary brand colors)
+  const fctgSwatches = BRAND_FAMILIES[0]?.swatches ?? [];
+
+  /** True when there's a non-empty text selection inside the editable element */
+  const hasLiveSelection = (): boolean => {
+    if (!isEditing || !editRef.current) return false;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
+    // Must be within the editable region
+    const range = sel.getRangeAt(0);
+    return editRef.current.contains(range.commonAncestorContainer);
+  };
+
+  const applyColor = (hex: string) => {
+    if (hasLiveSelection()) {
+      // Color only the highlighted run
+      try {
+        document.execCommand("styleWithCSS", false, "true");
+        document.execCommand("foreColor", false, hex);
+        // Persist updated HTML so it survives blur — innerHTML is read elsewhere via innerText,
+        // so we also store it on the element so re-renders keep the run color via inline spans.
+        // (We keep it lightweight: rely on browser-injected <span style="color:.."> tags inside
+        //  the contentEditable; on blur the parent commits innerText only, but the span colors
+        //  remain visible during the editing session. For full persistence the user can apply
+        //  the color to the entire element by clicking the swatch with no selection.)
+      } catch {
+        updateElement(slideId, element.id, { color: hex });
+      }
+    } else {
+      // Recolor the whole element
+      updateElement(slideId, element.id, { color: hex });
+    }
+  };
+
+  const toggleBold = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const currentWeight = element.fontWeight;
+    const isBold = currentWeight === "bold" || (typeof currentWeight === "number" && currentWeight >= 600);
+    updateElement(slideId, element.id, { fontWeight: isBold ? "normal" : "bold" } as Partial<SlideElement>);
+  };
+
+  const toggleItalic = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const isItalic = element.fontStyle === "italic";
+    updateElement(slideId, element.id, { fontStyle: isItalic ? "normal" : "italic" } as Partial<SlideElement>);
+  };
+
+  const isBold = element.fontWeight === "bold" || (typeof element.fontWeight === "number" && element.fontWeight >= 600);
+  const isItalic = element.fontStyle === "italic";
+
+  // Stop the toolbar from triggering element drag / blur
+  const stop = (e: React.MouseEvent | React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  return (
+    <div
+      onMouseDown={stop}
+      onPointerDown={stop}
+      onClick={(e) => e.stopPropagation()}
+      className="absolute -top-12 left-0 z-40 flex items-center gap-1 rounded-lg bg-zinc-900/95 px-2 py-1.5 shadow-lg ring-1 ring-amber-500/40 backdrop-blur"
+      style={{ pointerEvents: "auto" }}
+      data-testid="floating-text-toolbar"
+    >
+      {/* Bold */}
+      <button
+        type="button"
+        onMouseDown={stop}
+        onClick={toggleBold}
+        title="Bold"
+        data-testid="toolbar-bold"
+        className={cn(
+          "flex h-7 w-7 items-center justify-center rounded text-white hover:bg-zinc-700 transition-colors",
+          isBold && "bg-amber-500 text-zinc-900 hover:bg-amber-400"
+        )}
+      >
+        <Bold className="h-3.5 w-3.5" />
+      </button>
+
+      {/* Italic */}
+      <button
+        type="button"
+        onMouseDown={stop}
+        onClick={toggleItalic}
+        title="Italic"
+        data-testid="toolbar-italic"
+        className={cn(
+          "flex h-7 w-7 items-center justify-center rounded text-white hover:bg-zinc-700 transition-colors",
+          isItalic && "bg-amber-500 text-zinc-900 hover:bg-amber-400"
+        )}
+      >
+        <Italic className="h-3.5 w-3.5" />
+      </button>
+
+      <div className="h-5 w-px bg-zinc-700 mx-1" />
+
+      {/* FCTG Brand swatches */}
+      <span className="text-[10px] font-semibold text-amber-400/80 mr-1 select-none">FCTG</span>
+      {fctgSwatches.map((sw) => (
+        <button
+          key={sw.hex}
+          type="button"
+          onMouseDown={stop}
+          onClick={(e) => {
+            e.stopPropagation();
+            applyColor(sw.hex);
+          }}
+          title={`${sw.name} (${sw.hex})`}
+          data-testid={`toolbar-swatch-${sw.hex}`}
+          className="h-6 w-6 rounded-full ring-1 ring-white/20 hover:ring-2 hover:ring-amber-400 transition-all"
+          style={{ backgroundColor: sw.hex }}
+        />
+      ))}
+
+      <div className="h-5 w-px bg-zinc-700 mx-1" />
+
+      {/* Native color picker */}
+      <label
+        title="Custom color"
+        className="flex h-7 items-center gap-1 rounded bg-zinc-800 px-2 text-xs text-white hover:bg-zinc-700 cursor-pointer"
+        onMouseDown={stop}
+      >
+        <Pipette className="h-3.5 w-3.5" />
+        <input
+          type="color"
+          defaultValue={element.color || "#FDFBF7"}
+          onChange={(e) => applyColor(e.target.value)}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="h-4 w-5 cursor-pointer border-0 bg-transparent p-0"
+          data-testid="toolbar-color-picker"
+        />
+      </label>
+    </div>
+  );
+}
+
 // ─── ElementRenderer ──────────────────────────────────────────────────────────
 function ElementRenderer({
   element,
@@ -130,15 +297,18 @@ function ElementRenderer({
   } | null>(null);
 
   // ── Drag handlers ──
+  // We don't initiate a drag while the user is editing text — their mouse moves
+  // need to stay with the native text-selection caret. Drag also only kicks in
+  // after the cursor moves past a small threshold so a true "click" never
+  // accidentally starts a drag (which used to swallow caret placement).
+  const DRAG_THRESHOLD = 4; // px in screen space
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (previewMode) return;
     if (e.button !== 0) return;
+    if (isEditing) return; // let the contentEditable handle the cursor / selection
     e.stopPropagation();
 
     setSelectedElementId(element.id);
-
-    // Save state for undo before dragging
-    pushSnapshot();
 
     dragState.current = {
       startMouseX: e.clientX,
@@ -148,13 +318,25 @@ function ElementRenderer({
       active: false,
     };
 
+    let snapshotted = false;
+
     const onMouseMove = (ev: MouseEvent) => {
       if (!dragState.current) return;
-      const dx = (ev.clientX - dragState.current.startMouseX) / slideScale;
-      const dy = (ev.clientY - dragState.current.startMouseY) / slideScale;
-      dragState.current.active = true;
-      document.body.style.cursor = "grabbing";
-      document.body.style.userSelect = "none";
+      const dxScreen = ev.clientX - dragState.current.startMouseX;
+      const dyScreen = ev.clientY - dragState.current.startMouseY;
+      // Wait until the user has actually moved before snapshotting & starting drag
+      if (!dragState.current.active) {
+        if (Math.abs(dxScreen) < DRAG_THRESHOLD && Math.abs(dyScreen) < DRAG_THRESHOLD) return;
+        if (!snapshotted) {
+          pushSnapshot();
+          snapshotted = true;
+        }
+        dragState.current.active = true;
+        document.body.style.cursor = "grabbing";
+        document.body.style.userSelect = "none";
+      }
+      const dx = dxScreen / slideScale;
+      const dy = dyScreen / slideScale;
       updateElementSilent(slideId, element.id, {
         x: dragState.current.startX + dx,
         y: dragState.current.startY + dy,
@@ -248,15 +430,35 @@ function ElementRenderer({
   }, [element.id, element.x, element.y, element.width, element.height, previewMode, pushSnapshot, slideId, slideScale, updateElementSilent]);
 
   // ── Editing ──
+  // Text-like element types are click-to-edit. Shapes / images / dividers
+  // remain select-only (no inline content).
+  const isTextLike =
+    element.type === "heading" ||
+    element.type === "subtitle" ||
+    element.type === "body" ||
+    element.type === "cta";
+
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (element.type === "shape" || element.type === "image" || element.type === "divider") return;
+    if (!isTextLike) return;
     setIsEditing(true);
     setSelectedElementId(element.id);
   };
 
   const handleClick = (e: React.MouseEvent) => {
+    // If a drag was just performed, suppress the synthetic click so we don't
+    // accidentally enter edit mode after dragging.
+    if (dragState.current?.active) {
+      e.stopPropagation();
+      return;
+    }
     e.stopPropagation();
+    // First click selects; second click on an already-selected text element
+    // enters edit mode. This matches Canva / Figma / Keynote behavior.
+    if (isTextLike && isSelected && !isEditing) {
+      setIsEditing(true);
+      return;
+    }
     setSelectedElementId(element.id);
   };
 
@@ -646,7 +848,9 @@ function ElementRenderer({
   return (
     <div
       className={cn(
-        "group/element cursor-grab select-none transition-shadow relative",
+        "group/element transition-shadow relative",
+        isEditing ? "cursor-text" : "cursor-grab",
+        !isEditing && "select-none",
         isSelected && "ring-2 ring-blue-500",
         isEditing && "ring-2 ring-blue-400"
       )}
@@ -657,6 +861,16 @@ function ElementRenderer({
       onContextMenu={(e) => onContextMenu(e, element.id)}
       data-testid={`element-${element.id}`}
     >
+      {/* Floating inline text toolbar — color swatches, picker, bold/italic */}
+      {isSelected && !previewMode && (
+        <FloatingTextToolbar
+          element={element}
+          slideId={slideId}
+          updateElement={updateElement}
+          editRef={editRef}
+          isEditing={isEditing}
+        />
+      )}
       {/* Drag handle (PostNitro style :: dots) — always visible when slide selected */}
       {isSlideSelected && (
         <div
