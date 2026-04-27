@@ -6,7 +6,7 @@ import type {
   ComparisonSide,
   Slide,
 } from "@/lib/types";
-import { buildComparisonTheme } from "@/lib/types";
+import { buildComparisonTheme, computeSideBackground } from "@/lib/types";
 
 /* ───────────────────────────────────────────────────────────────────────────
    ComparisonSlide
@@ -163,10 +163,19 @@ function SidePanel({
         isFocused && "comparison-pulse"
       )}
       style={{
-        // Glassmorphism: tinted bg + blur + thin low-opacity border
-        background: data.backgroundColor,
-        backdropFilter: "blur(14px) saturate(140%)",
-        WebkitBackdropFilter: "blur(14px) saturate(140%)",
+        // Background is now computed from fillStyle + fillAlpha + base hex
+        // (centralized in computeSideBackground so renderer + panel + export
+        // all stay in sync). Glass mode preserves the backdrop blur effect;
+        // solid/gradient modes stand on their own without needing it.
+        background: computeSideBackground(data),
+        // Only apply backdrop-filter blur for glass fills — it's wasted work
+        // (and slightly washes the color) on a fully-opaque solid panel.
+        ...((data.fillStyle ?? "glass") === "glass"
+          ? {
+              backdropFilter: "blur(14px) saturate(140%)",
+              WebkitBackdropFilter: "blur(14px) saturate(140%)",
+            }
+          : {}),
         border: "1px solid rgba(255,255,255,0.12)",
         boxShadow: isFocused
           ? "inset 0 0 0 2px rgba(212,165,55,0.85), 0 0 32px rgba(212,165,55,0.35)"

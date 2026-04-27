@@ -47,14 +47,28 @@ export type ComparisonIcon = "check" | "x" | "alert" | "idea" | "star" | "trend-
 export type ComparisonTheme = "custom" | "pro-con" | "before-after" | "competitor";
 export type ComparisonDividerStyle = "glow" | "solid" | "none";
 
+/** Fill mode for a comparison panel side.
+   - glass: translucent tint over the slide background (glassmorphism, default)
+   - solid: fully opaque single-color panel fill
+   - gradient: vertical gradient from full-color top to softer bottom */
+export type ComparisonFillStyle = "glass" | "solid" | "gradient";
+
 export interface ComparisonSide {
   subheading: string;
   items: string[];
-  /** rgba(...) or #hex — used as the glass-tinted background */
+  /** Base swatch color as #hex. Combined with fillStyle + fillAlpha at render
+     time to produce the actual CSS background. Stored as hex (not rgba) so
+     users can switch between glass/solid/gradient without losing the hue. */
   backgroundColor: string;
   textColor: string;
   /** key from ComparisonIcon — applied to every list bullet on this side */
   icon: ComparisonIcon;
+  /** How to render the side panel background. Defaults to "glass" for back-
+     compat with slides created before this field existed. */
+  fillStyle?: ComparisonFillStyle;
+  /** Opacity 0–1 used by glass mode (and for the bottom stop of gradient).
+     Ignored for solid. Defaults to 0.18 to match the original glass tint. */
+  fillAlpha?: number;
 }
 
 export interface ComparisonGlobalSettings {
@@ -524,6 +538,110 @@ export function createDefaultGlobalStyles(): GlobalStyles {
   };
 }
 
+// ─── Comparison Slide color helpers ─────────────────────────────────────────
+
+/** Convert any color string to an `{r,g,b,a}` triple. Accepts #RGB, #RRGGBB,
+   and `rgb()`/`rgba()` strings (so legacy slides whose backgroundColor was
+   stored as `rgba(...)` still work). Returns null on parse failure. */
+export function parseColor(input: string): { r: number; g: number; b: number; a: number } | null {
+  if (!input) return null;
+  const s = input.trim();
+  // hex
+  const hexMatch = s.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (hexMatch) {
+    const h = hexMatch[1];
+    const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+    return {
+      r: parseInt(full.slice(0, 2), 16),
+      g: parseInt(full.slice(2, 4), 16),
+      b: parseInt(full.slice(4, 6), 16),
+      a: 1,
+    };
+  }
+  // rgb / rgba
+  const rgbMatch = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([0-9.]+)\s*)?\)$/i);
+  if (rgbMatch) {
+    return {
+      r: parseInt(rgbMatch[1], 10),
+      g: parseInt(rgbMatch[2], 10),
+      b: parseInt(rgbMatch[3], 10),
+      a: rgbMatch[4] != null ? parseFloat(rgbMatch[4]) : 1,
+    };
+  }
+  return null;
+}
+
+export function hexToRgba(hex: string, alpha: number): string {
+  const c = parseColor(hex);
+  if (!c) return hex;
+  const a = Math.max(0, Math.min(1, alpha));
+  return `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
+}
+
+/** Convert any color (hex or rgba) back to a clean #RRGGBB string. */
+export function toHex(input: string): string {
+  const c = parseColor(input);
+  if (!c) return input;
+  return (
+    "#" +
+    [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("")
+  );
+}
+
+/** WCAG relative luminance (0–1). Used to pick a contrasting text color. */
+export function relativeLuminance(hex: string): number {
+  const c = parseColor(hex);
+  if (!c) return 0;
+  const norm = (v: number) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * norm(c.r) + 0.7152 * norm(c.g) + 0.0722 * norm(c.b);
+}
+
+/** Suggest a high-contrast text color for a given background hex.
+   Returns light cream for dark backgrounds and a dark charcoal for light
+   ones. Used by the Solid fill auto-suggest. */
+export function suggestTextColor(bgHex: string): string {
+  return relativeLuminance(bgHex) < 0.45 ? "#FDFBF7" : "#1F2937";
+}
+
+/**
+ * Compute the actual CSS `background` value for a comparison side, given its
+ * stored swatch color, fillStyle, and fillAlpha. Centralizing this here lets
+ * the renderer, the panel preview, and any future export code stay in sync.
+ *
+ * Back-compat: if the stored backgroundColor is already an `rgba(...)` string
+ * (legacy slides written before fillStyle existed), we extract its hex and
+ * alpha, treat it as glass mode, and emit the same value — so existing
+ * carousels render identically until the user actively changes fill.
+ */
+export function computeSideBackground(side: ComparisonSide): string {
+  const raw = side.backgroundColor || "#08080A";
+  const hex = toHex(raw);
+
+  // If fillStyle is missing AND raw is rgba (legacy), preserve the original
+  // exactly — do not flip those slides to a different look on first render.
+  const isLegacyRgba = side.fillStyle == null && /^rgba?\(/i.test(raw);
+  if (isLegacyRgba) return raw;
+
+  const style = side.fillStyle ?? "glass";
+  const alpha = side.fillAlpha ?? 0.18;
+
+  switch (style) {
+    case "solid":
+      return hex;
+    case "gradient": {
+      const top = hexToRgba(hex, 1);
+      const bottom = hexToRgba(hex, Math.max(0.05, alpha));
+      return `linear-gradient(180deg, ${top} 0%, ${bottom} 100%)`;
+    }
+    case "glass":
+    default:
+      return hexToRgba(hex, alpha);
+  }
+}
+
 // ─── Comparison Slide factory + theme presets ──────────────────────────────
 export function buildComparisonTheme(theme: ComparisonTheme): {
   global: ComparisonGlobalSettings;
@@ -537,16 +655,20 @@ export function buildComparisonTheme(theme: ComparisonTheme): {
         left: {
           subheading: "Pros",
           items: ["Fast results", "Easy to use", "Great support"],
-          backgroundColor: "rgba(5, 150, 105, 0.18)",
+          backgroundColor: "#059669",
           textColor: "#FDFBF7",
           icon: "check",
+          fillStyle: "glass",
+          fillAlpha: 0.18,
         },
         right: {
           subheading: "Cons",
           items: ["High cost", "Steep learning curve", "Limited integrations"],
-          backgroundColor: "rgba(220, 38, 38, 0.18)",
+          backgroundColor: "#DC2626",
           textColor: "#FDFBF7",
           icon: "x",
+          fillStyle: "glass",
+          fillAlpha: 0.18,
         },
       };
     case "before-after":
@@ -555,16 +677,20 @@ export function buildComparisonTheme(theme: ComparisonTheme): {
         left: {
           subheading: "Before",
           items: ["Stuck in old patterns", "Reactive, not proactive", "Burned out"],
-          backgroundColor: "rgba(51, 65, 85, 0.30)",
+          backgroundColor: "#334155",
           textColor: "#FDFBF7",
           icon: "alert",
+          fillStyle: "glass",
+          fillAlpha: 0.30,
         },
         right: {
           subheading: "After",
           items: ["Clear vision", "Confident decisions", "Sustainable energy"],
-          backgroundColor: "rgba(212, 165, 55, 0.20)",
+          backgroundColor: "#D4A537",
           textColor: "#FDFBF7",
           icon: "trend-up",
+          fillStyle: "glass",
+          fillAlpha: 0.20,
         },
       };
     case "competitor":
@@ -573,16 +699,20 @@ export function buildComparisonTheme(theme: ComparisonTheme): {
         left: {
           subheading: "Us",
           items: ["Proven framework", "24/7 support", "Custom strategy"],
-          backgroundColor: "rgba(30, 64, 175, 0.22)",
+          backgroundColor: "#1E40AF",
           textColor: "#FDFBF7",
           icon: "star",
+          fillStyle: "glass",
+          fillAlpha: 0.22,
         },
         right: {
           subheading: "Them",
           items: ["Generic templates", "Slow response", "One-size-fits-all"],
-          backgroundColor: "rgba(11, 30, 63, 0.40)",
+          backgroundColor: "#0B1E3F",
           textColor: "#FDFBF7",
           icon: "user",
+          fillStyle: "glass",
+          fillAlpha: 0.40,
         },
       };
     case "custom":
@@ -592,16 +722,20 @@ export function buildComparisonTheme(theme: ComparisonTheme): {
         left: {
           subheading: "Option A",
           items: ["Point one", "Point two", "Point three"],
-          backgroundColor: "rgba(212, 165, 55, 0.18)",
+          backgroundColor: "#D4A537",
           textColor: "#FDFBF7",
           icon: "check",
+          fillStyle: "glass",
+          fillAlpha: 0.18,
         },
         right: {
           subheading: "Option B",
           items: ["Point one", "Point two", "Point three"],
-          backgroundColor: "rgba(8, 8, 10, 0.45)",
+          backgroundColor: "#08080A",
           textColor: "#FDFBF7",
           icon: "star",
+          fillStyle: "glass",
+          fillAlpha: 0.45,
         },
       };
   }

@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { Plus, Trash2, ArrowLeftRight, Sparkles, GitCompare, Briefcase } from "lucide-react";
+import { Plus, Trash2, ArrowLeftRight, Sparkles, GitCompare, Briefcase, Square, Layers, Droplet, Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   FCTG_BRAND_SWATCHES,
   COMPARISON_BG_SWATCHES,
   COMPARISON_TEXT_SWATCHES,
   buildComparisonTheme,
+  computeSideBackground,
+  suggestTextColor,
+  toHex,
+  type ComparisonFillStyle,
   type ComparisonIcon,
   type ComparisonSide,
   type ComparisonGlobalSettings,
@@ -69,14 +75,14 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
    - Top row: FCTG brand colors (always shown)
    - Middle row: caller-supplied curated accents (different for bg vs text)
    - Bottom: hex input for any custom color
-   When `alpha` is set, swatch clicks emit rgba(...) at that alpha so the same
-   palette can drive subtle background tints AND solid text colors. */
+   Swatches always emit a clean #hex string. The actual rendering style
+   (glass/solid/gradient + alpha) is owned by the side and applied by the
+   renderer through computeSideBackground(). */
 function SwatchGrid({
   value,
   onChange,
   onFocus,
   onBlur,
-  alpha,
   accents = COMPARISON_BG_SWATCHES,
   accentsLabel = "Accents",
   testIdPrefix = "swatch",
@@ -85,8 +91,6 @@ function SwatchGrid({
   onChange: (v: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
-  /** When set, output is rgba(...) with this alpha (0-1) instead of hex */
-  alpha?: number;
   /** Curated accents row — swap to text/bg palettes per call site */
   accents?: ComparisonSwatch[];
   accentsLabel?: string;
@@ -96,15 +100,13 @@ function SwatchGrid({
   const [hexDraft, setHexDraft] = useState("");
 
   const emit = (hex: string) => {
-    const out = alpha != null ? hexToRgba(hex, alpha) : hex;
     onFocus?.();
-    onChange(out);
+    onChange(hex);
   };
 
-  const isSelected = (hex: string) => {
-    const out = alpha != null ? hexToRgba(hex, alpha) : hex;
-    return normalizeColor(value) === normalizeColor(out);
-  };
+  // Compare on canonical hex so an old rgba-stored value still highlights
+  // the matching swatch correctly.
+  const isSelected = (hex: string) => normalizeColor(toHex(value)) === normalizeColor(hex);
 
   const Row = ({ swatches, label }: { swatches: ComparisonSwatch[]; label: string }) => (
     <div className="space-y-1">
@@ -172,10 +174,12 @@ function SwatchGrid({
             data-testid={`${testIdPrefix}-hex-input`}
           />
         </div>
-        {/* Live preview chip of current value */}
+        {/* Live preview chip — paints the canonical hex so the user sees
+            the actual color they’ve picked, not whatever rgba/string we
+            happen to store. */}
         <div
           className="h-6 w-6 rounded-md border border-[#4A4B4D] shrink-0"
-          style={{ background: value || "transparent" }}
+          style={{ background: value ? toHex(value) : "transparent" }}
           title={`Current: ${value}`}
         />
       </div>
@@ -183,16 +187,72 @@ function SwatchGrid({
   );
 }
 
-function hexToRgba(hex: string, alpha: number): string {
-  const h = hex.replace("#", "");
-  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 function normalizeColor(c: string): string {
-  return c.replace(/\s+/g, "").toLowerCase();
+  return (c || "").replace(/\s+/g, "").toLowerCase();
+}
+
+/** WCAG-style contrast check. Returns true when the foreground/background
+   combo is too close in luminance for comfortable reading (delta < 0.45).
+   Used by the Solid auto-suggest — if the user already has a contrasting
+   text color, we leave it alone; if not, we propose one that works. */
+function relativeContrastFails(fg: string, bg: string): boolean {
+  const lumFg = relLum(fg);
+  const lumBg = relLum(bg);
+  return Math.abs(lumFg - lumBg) < 0.45;
+}
+function relLum(color: string): number {
+  const hex = toHex(color);
+  const c = parseHex(hex);
+  if (!c) return 0;
+  const norm = (v: number) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * norm(c.r) + 0.7152 * norm(c.g) + 0.0722 * norm(c.b);
+}
+function parseHex(hex: string): { r: number; g: number; b: number } | null {
+  const m = hex.match(/^#([0-9a-f]{6})$/i);
+  if (!m) return null;
+  return {
+    r: parseInt(m[1].slice(0, 2), 16),
+    g: parseInt(m[1].slice(2, 4), 16),
+    b: parseInt(m[1].slice(4, 6), 16),
+  };
+}
+
+/** Visual preview tile for the Fill Style segmented control. Renders a
+   miniature of how the selected hex would actually paint at the chosen
+   fill style. */
+function FillPreview({
+  hex,
+  style,
+  alpha,
+  size = 14,
+}: {
+  hex: string;
+  style: ComparisonFillStyle;
+  alpha: number;
+  size?: number;
+}) {
+  const fakeSide: ComparisonSide = {
+    subheading: "",
+    items: [],
+    backgroundColor: hex,
+    textColor: "#fff",
+    icon: "check",
+    fillStyle: style,
+    fillAlpha: alpha,
+  };
+  return (
+    <div
+      className="rounded-sm border border-[#4A4B4D]/60"
+      style={{
+        width: size,
+        height: size,
+        background: computeSideBackground(fakeSide),
+      }}
+    />
+  );
 }
 
 /* ── Main panel ────────────────────────────────────────────────────────── */
@@ -228,6 +288,30 @@ export function ComparisonPanel({
     updateSlide(slide.id, { comparisonLeft: { ...left, ...patch } });
   const updateRight = (patch: Partial<ComparisonSide>) =>
     updateSlide(slide.id, { comparisonRight: { ...right, ...patch } });
+
+  /* "Apply to both sides" — panel-level state (not persisted on the slide,
+     since it's an editing preference, not a slide property). When ON, any
+     fill-related update is forked to BOTH sides simultaneously. */
+  const [linkFills, setLinkFills] = useState(false);
+
+  /* Single entry point for fill-related changes (backgroundColor, fillStyle,
+     fillAlpha, and the auto-suggested textColor). Honors linkFills so we can
+     wire it once from the SideEditor and not duplicate logic. */
+  const updateFill = (
+    targetSide: "left" | "right",
+    patch: Partial<ComparisonSide>
+  ) => {
+    if (linkFills) {
+      updateSlide(slide.id, {
+        comparisonLeft: { ...left, ...patch },
+        comparisonRight: { ...right, ...patch },
+      });
+    } else if (targetSide === "left") {
+      updateLeft(patch);
+    } else {
+      updateRight(patch);
+    }
+  };
 
   const applyPreset = (theme: ComparisonTheme) => {
     const p = buildComparisonTheme(theme);
@@ -365,11 +449,35 @@ export function ComparisonPanel({
         )}
       </div>
 
+      {/* "Apply to both sides" — a global mirror toggle. When ON, any
+          background-fill change on one side automatically applies to the
+          other side too. Color content (subheading, items, icon) is NEVER
+          mirrored; only fill style + alpha + base color. This preserves
+          asymmetric pro/con layouts where users want different bullet
+          icons but matching panel chrome. */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#2D2E30] border border-[#4A4B4D]">
+        <Checkbox
+          id="comparison-link-fills"
+          checked={linkFills}
+          onCheckedChange={(v) => setLinkFills(v === true)}
+          data-testid="comparison-link-fills"
+          className="data-[state=checked]:bg-[#D4A537] data-[state=checked]:border-[#D4A537]"
+        />
+        <label
+          htmlFor="comparison-link-fills"
+          className="flex items-center gap-1.5 text-[11px] font-medium text-[#E2DDD5] cursor-pointer select-none"
+        >
+          <LinkIcon className="w-3 h-3 text-[#B8944F]" />
+          Apply background changes to both sides
+        </label>
+      </div>
+
       {/* Per-side editors */}
       <SideEditor
         side="left"
         data={left}
         update={updateLeft}
+        updateFill={(p) => updateFill("left", p)}
         theme={global.theme}
         setFocusAndPropagate={setFocusAndPropagate}
       />
@@ -377,6 +485,7 @@ export function ComparisonPanel({
         side="right"
         data={right}
         update={updateRight}
+        updateFill={(p) => updateFill("right", p)}
         theme={global.theme}
         setFocusAndPropagate={setFocusAndPropagate}
       />
@@ -399,15 +508,49 @@ function SideEditor({
   side,
   data,
   update,
+  updateFill,
   theme,
   setFocusAndPropagate,
 }: {
   side: "left" | "right";
   data: ComparisonSide;
+  /** Updates that affect ONLY this side (subheading, items, icon, textColor). */
   update: (p: Partial<ComparisonSide>) => void;
+  /** Background-fill updates that may be mirrored to the other side when
+      the parent's "Apply to both sides" toggle is on. */
+  updateFill: (p: Partial<ComparisonSide>) => void;
   theme: ComparisonTheme;
   setFocusAndPropagate: (t: ComparisonFocusTarget) => void;
 }) {
+  // Resolve effective fill style + alpha (handles legacy slides w/o fields).
+  const fillStyle: ComparisonFillStyle = data.fillStyle ?? "glass";
+  const fillAlpha = data.fillAlpha ?? 0.18;
+
+  /* When the user picks a swatch, ALSO auto-upgrade the text color when
+     they're in Solid mode and the new background would clash with the
+     current text. We only override if the existing textColor would be
+     low-contrast — we never overwrite an explicit, contrasting choice. */
+  const handleBgPick = (newHex: string) => {
+    const patch: Partial<ComparisonSide> = { backgroundColor: newHex };
+    if (fillStyle === "solid") {
+      const suggested = suggestTextColor(newHex);
+      // Only auto-update text if current text would now be hard to read.
+      const currentLum = relativeContrastFails(data.textColor, newHex);
+      if (currentLum) patch.textColor = suggested;
+    }
+    setFocusAndPropagate({ side, field: "background" });
+    updateFill(patch);
+  };
+
+  /* Switching fill style is the other big moment to consider auto text. */
+  const handleFillStyleChange = (next: ComparisonFillStyle) => {
+    const patch: Partial<ComparisonSide> = { fillStyle: next };
+    if (next === "solid" && relativeContrastFails(data.textColor, data.backgroundColor)) {
+      patch.textColor = suggestTextColor(toHex(data.backgroundColor));
+    }
+    setFocusAndPropagate({ side, field: "background" });
+    updateFill(patch);
+  };
   const ph = getPlaceholders(theme, side);
   const updateItem = (idx: number, value: string) => {
     const next = [...data.items];
@@ -507,14 +650,60 @@ function SideEditor({
         </div>
       </div>
 
-      {/* Background */}
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-medium text-[#8A8580]">Background tint</label>
+      {/* Side background — fill style + opacity + swatch */}
+      <div className="space-y-1.5" data-testid={`bg-section-${side}`}>
+        <label className="text-[11px] font-medium text-[#8A8580]">Side background</label>
+
+        {/* Fill style segmented control */}
+        <div className="grid grid-cols-3 gap-1">
+          {(["glass", "solid", "gradient"] as ComparisonFillStyle[]).map((s) => {
+            const active = fillStyle === s;
+            const label = s === "glass" ? "Glass" : s === "solid" ? "Solid" : "Gradient";
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => handleFillStyleChange(s)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-[10px] font-medium transition-all border",
+                  active
+                    ? "bg-[#D4A537] text-[#08080A] border-[#D4A537]"
+                    : "border-[#4A4B4D] text-[#8A8580] hover:border-[#B8944F] hover:text-[#E2DDD5]"
+                )}
+                data-testid={`fill-style-${side}-${s}`}
+                title={s === "glass" ? "Translucent tint" : s === "solid" ? "Fully opaque fill" : "Top-to-bottom fade"}
+              >
+                <FillPreview hex={toHex(data.backgroundColor)} style={s} alpha={fillAlpha} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Opacity slider — only for glass + gradient */}
+        {fillStyle !== "solid" && (
+          <div className="space-y-1 pt-0.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-[#8A8580]">
+                Opacity {Math.round(fillAlpha * 100)}%
+              </span>
+            </div>
+            <Slider
+              value={[Math.round(fillAlpha * 100)]}
+              min={5}
+              max={50}
+              step={1}
+              onValueChange={(v) => updateFill({ fillAlpha: (v[0] ?? 18) / 100 })}
+              data-testid={`opacity-slider-${side}`}
+            />
+          </div>
+        )}
+
+        {/* Base color swatch — emits clean hex */}
         <SwatchGrid
-          value={data.backgroundColor}
+          value={toHex(data.backgroundColor)}
           onFocus={() => setFocusAndPropagate({ side, field: "background" })}
-          onChange={(v) => update({ backgroundColor: v })}
-          alpha={0.18}
+          onChange={handleBgPick}
           accents={COMPARISON_BG_SWATCHES}
           accentsLabel="Background accents"
           testIdPrefix={`bg-swatch-${side}`}
