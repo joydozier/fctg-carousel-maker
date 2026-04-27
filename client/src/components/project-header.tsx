@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, Download, FileDown, FolderOpen, ChevronLeft, Film, Image as ImageIcon, Layers, Archive, BookTemplate, HelpCircle, Eye, Undo2, Redo2 } from "lucide-react";
+import { Save, Download, FileDown, FolderOpen, ChevronLeft, Film, Image as ImageIcon, Layers, Archive, BookTemplate, HelpCircle, Eye, Undo2, Redo2, Columns2 } from "lucide-react";
 import { HelpModal } from "@/components/help-modal";
 import { PreviewModal } from "@/components/preview-modal";
 import { PLATFORM_SIZES, getVideoLayoutWarning } from "@/lib/types";
@@ -18,8 +18,38 @@ interface ProjectHeaderProps {
   store: ReturnType<typeof import("@/lib/carousel-store").useCarouselStore>;
 }
 
+/* localStorage key that hides the "NEW" pip on the comparison quick-action
+   button after the user has clicked it once. Acts as muscle-memory training:
+   the highlight goes away as soon as the user knows the feature exists. */
+const COMPARISON_NEW_BADGE_KEY = "fctg.comparisonNewBadge.dismissed.v1";
+
 export function ProjectHeader({ store }: ProjectHeaderProps) {
-  const { project, updateProject, setIsDirty, setSlideCount } = store;
+  const { project, updateProject, setIsDirty, setSlideCount, addComparisonSlide } = store;
+
+  /* Track whether to show the "NEW" pip. Default true (show) for first-time
+     users; flips false the first time the user clicks the quick-action. */
+  const [showCmpBadge, setShowCmpBadge] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem(COMPARISON_NEW_BADGE_KEY) !== "1";
+  });
+
+  /* Quick-action: append a new Comparison slide and immediately open its
+     Configure modal so the user can start typing right away. The 'open
+     configure' part is dispatched as a custom DOM event so that SlideCanvas
+     (a sibling component) can react without prop drilling. */
+  const handleQuickAddComparison = () => {
+    const newIdx = addComparisonSlide("pro-con");
+    // Dismiss the NEW badge — user has discovered the feature
+    localStorage.setItem(COMPARISON_NEW_BADGE_KEY, "1");
+    setShowCmpBadge(false);
+    // Wait one tick so the new slide is in state before SlideCanvas listens
+    requestAnimationFrame(() => {
+      window.dispatchEvent(
+        new CustomEvent("fctg:open-configure", { detail: { index: newIdx } })
+      );
+    });
+  };
+
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [saving, setSaving] = useState(false);
@@ -595,6 +625,30 @@ export function ProjectHeader({ store }: ProjectHeaderProps) {
             title="Redo (Ctrl+Shift+Z)"
           >
             <Redo2 className="w-4 h-4" />
+          </Button>
+
+          <div className="w-px h-6 bg-[#3A3B3D]" />
+
+          {/* Quick-action: Add Comparison Slide (Tier 1 visibility upgrade).
+              Sits next to Save with a gold gradient + NEW pip until first use
+              so users always have a one-click path to the comparison feature. */}
+          <Button
+            size="sm"
+            onClick={handleQuickAddComparison}
+            className="relative gap-1.5 bg-gradient-to-r from-[#D4A537] to-[#B8944F] text-[#08080A] hover:from-[#E0B547] hover:to-[#C8A455] hover:text-[#08080A] font-semibold shadow-sm shadow-[#D4A537]/20"
+            data-testid="add-comparison-button"
+            title="Add a Comparison slide (pro/con, before/after, etc.)"
+          >
+            <Columns2 className="w-3.5 h-3.5" />
+            Add Comparison
+            {showCmpBadge && (
+              <span
+                className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[9px] font-bold leading-none rounded-full bg-[#FF4D6D] text-white shadow-sm shadow-[#FF4D6D]/40 ring-1 ring-[#08080A]"
+                data-testid="add-comparison-new-badge"
+              >
+                NEW
+              </span>
+            )}
           </Button>
 
           <div className="w-px h-6 bg-[#3A3B3D]" />

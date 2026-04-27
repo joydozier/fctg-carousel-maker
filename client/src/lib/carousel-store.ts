@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { CarouselProject, Slide, SlideElement, GlobalStyles } from "./types";
-import { createDefaultProject, generateSlides, createContentSlide } from "./types";
+import type { CarouselProject, Slide, SlideElement, GlobalStyles, ComparisonTheme } from "./types";
+import { createDefaultProject, generateSlides, createContentSlide, applyComparisonLayout } from "./types";
 
 const MAX_HISTORY = 50;
 
@@ -323,6 +323,61 @@ export function useCarouselStore() {
     futureRef.current = [];
   }, []);
 
+  /* Add a NEW slide pre-configured as a Comparison layout. Used by the toolbar
+     quick-action, the '+' menu featured option, and the empty-state hero card.
+     Returns the new index so callers can also open the configure modal. */
+  const addComparisonSlide = useCallback(
+    (theme: ComparisonTheme = "pro-con", afterIndex?: number): number => {
+      let newIdx = 0;
+      setProject(prev => {
+        pushHistory(prev);
+        const slides = prev.slides;
+        const insertAfter =
+          afterIndex !== undefined ? afterIndex : slides.length - 1;
+
+        // Start from a fresh content slide so we don't inherit unrelated
+        // elements (image overlays, decorations) from a sibling slide.
+        const base = createContentSlide(
+          slides.length,
+          prev.globalStyles.colorPalette,
+          prev.globalStyles
+        );
+        const newSlide = applyComparisonLayout(base, theme);
+        newSlide.id = crypto.randomUUID();
+        newSlide.slideType = "content";
+
+        const newSlides = [...slides];
+        newSlides.splice(insertAfter + 1, 0, newSlide);
+        const reindexed = newSlides.map((s, i) => ({ ...s, order: i }));
+        newIdx = insertAfter + 1;
+        return { ...prev, slideCount: reindexed.length, slides: reindexed };
+      });
+      setSelectedSlideIndex(newIdx);
+      markDirty();
+      return newIdx;
+    },
+    [markDirty, pushHistory]
+  );
+
+  /* Convert the CURRENTLY-selected slide into a Comparison layout. Used by the
+     empty-state hero card so the user keeps the slide they're already editing
+     instead of accumulating a new one. */
+  const convertSlideToComparison = useCallback(
+    (index: number, theme: ComparisonTheme = "pro-con") => {
+      setProject(prev => {
+        pushHistory(prev);
+        const slides = prev.slides;
+        if (!slides[index]) return prev;
+        const updated = applyComparisonLayout(slides[index], theme);
+        const newSlides = slides.map((s, i) => (i === index ? updated : s));
+        return { ...prev, slides: newSlides };
+      });
+      setSelectedSlideIndex(index);
+      markDirty();
+    },
+    [markDirty, pushHistory]
+  );
+
   // Duplicate entire project (returns the project data for the caller to save)
   const duplicateProject = useCallback((): CarouselProject => {
     return {
@@ -351,6 +406,8 @@ export function useCarouselStore() {
     removeElement,
     moveElementLayer,
     addSlide,
+    addComparisonSlide,
+    convertSlideToComparison,
     duplicateSlide,
     deleteSlide,
     moveSlide,

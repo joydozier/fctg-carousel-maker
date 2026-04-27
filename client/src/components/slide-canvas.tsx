@@ -3,11 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, ArrowLeft, ArrowRight, Settings, ImageIcon, X, Eye, PlusCircle, ChevronRightIcon, Sparkles, Download, Paintbrush, Palette, Type, Layers, Link2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, ArrowLeft, ArrowRight, Settings, ImageIcon, X, Eye, PlusCircle, ChevronRightIcon, Sparkles, Download, Paintbrush, Palette, Type, Layers, Link2, Columns2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SlideRenderer } from "@/components/slide-renderer";
 import { MediaModal } from "@/components/media-modal";
 import { ComparisonPanel } from "@/components/panels/comparison-panel";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import type { Slide, SlideLayout, VideoSplitLayout } from "@/lib/types";
 import { getVideoLayoutWarning, applyComparisonLayout } from "@/lib/types";
 import { AlertTriangle, Film, ArrowUpFromLine, ArrowDownFromLine, ArrowLeftFromLine, ArrowRightFromLine, Maximize } from "lucide-react";
@@ -31,14 +38,17 @@ const CANVAS_SIDEBAR_ITEMS = [
 ];
 
 /* ─────────────────── Layout Tab Definitions ─────────────────── */
-const LAYOUT_TABS: { value: SlideLayout; label: string }[] = [
+/* Comparison sits FIRST and gets a Featured star + gold ring (Tier 3 of
+   the visibility upgrade) so newcomers always see it before the older
+   layouts. The `featured` flag drives the special render below. */
+const LAYOUT_TABS: { value: SlideLayout; label: string; featured?: boolean }[] = [
+  { value: "comparison", label: "Comparison", featured: true },
   { value: "default", label: "Default" },
   { value: "quote-card", label: "Quote Card" },
   { value: "infographics", label: "Infographics" },
   { value: "testimonial", label: "Testimonial" },
   { value: "bento-grid", label: "Bento Grid" },
   { value: "video", label: "Video" },
-  { value: "comparison", label: "Comparison" },
 ];
 
 /* ── Video split layout definitions ── */
@@ -381,21 +391,37 @@ function ConfigureModal({
             <div className="bg-[#2D2E30] rounded-xl p-3 space-y-3">
               <h3 className="text-sm font-semibold text-[#E2DDD5]">Layout</h3>
               <div className="flex gap-0.5 overflow-x-auto">
-                {LAYOUT_TABS.map((tab) => (
-                  <button
-                    key={tab.value}
-                    onClick={() => setLayout(tab.value)}
-                    className={cn(
-                      "px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap",
-                      layout === tab.value
-                        ? "bg-[#D4A537] text-[#08080A] shadow-sm"
-                        : "text-[#8A8580] hover:bg-[#464849]"
-                    )}
-                    data-testid={`layout-tab-${tab.value}`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                {LAYOUT_TABS.map((tab) => {
+                  const isActive = layout === tab.value;
+                  // Featured tab (Comparison) gets a gold ring + star icon
+                  // even when inactive so users always notice it.
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setLayout(tab.value)}
+                      className={cn(
+                        "relative px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap inline-flex items-center gap-1",
+                        isActive
+                          ? "bg-[#D4A537] text-[#08080A] shadow-sm"
+                          : tab.featured
+                            ? "text-[#D4A537] ring-1 ring-[#D4A537]/60 hover:bg-[#D4A537]/10"
+                            : "text-[#8A8580] hover:bg-[#464849]"
+                      )}
+                      data-testid={`layout-tab-${tab.value}`}
+                      title={tab.featured ? "Featured layout \u2014 side-by-side comparisons" : tab.label}
+                    >
+                      {tab.featured && (
+                        <Star
+                          className={cn(
+                            "w-3 h-3",
+                            isActive ? "fill-[#08080A] text-[#08080A]" : "fill-[#D4A537] text-[#D4A537]"
+                          )}
+                        />
+                      )}
+                      {tab.label}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* ── Layout-specific options ── */}
@@ -740,10 +766,24 @@ function ConfigureModal({
 export function SlideCanvas({ store, activeTopPanel, activeLeftPanel, setActiveLeftPanel }: SlideCanvasProps) {
   const {
     project, selectedSlideIndex, setSelectedSlideIndex, setSelectedElementId,
-    addSlide, duplicateSlide, deleteSlide, moveSlide, updateSlide,
+    addSlide, addComparisonSlide, duplicateSlide, deleteSlide, moveSlide, updateSlide,
   } = store;
   const scrollRef = useRef<HTMLDivElement>(null);
   const [configureOpen, setConfigureOpen] = useState<number | null>(null);
+
+  /* Listen for the toolbar quick-action (Tier 1) and the empty-state hero
+     card (Tier 4) — both dispatch `fctg:open-configure` after creating or
+     converting a comparison slide so we can pop the Configure modal open. */
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail?.index === "number") {
+        setConfigureOpen(detail.index);
+      }
+    };
+    window.addEventListener("fctg:open-configure", handler);
+    return () => window.removeEventListener("fctg:open-configure", handler);
+  }, []);
   const [mediaModalOpen, setMediaModalOpen] = useState<number | null>(null);
   const [recentUploads, setRecentUploads] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
@@ -1043,15 +1083,52 @@ export function SlideCanvas({ store, activeTopPanel, activeLeftPanel, setActiveL
                 )}
               </div>
 
-              {/* Add slide */}
-              <button
-                onClick={(e) => { e.stopPropagation(); addSlide(index); }}
-                className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
-                title="Add slide after this one"
-                data-testid={`add-slide-inline-${index}`}
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-              </button>
+              {/* Add slide — Tier 2 of the comparison visibility upgrade.
+                  The plain '+' is now a dropdown that exposes both a blank
+                  slide and a featured "Comparison Slide" option, so users
+                  who scroll the filmstrip can spawn a comparison without
+                  going up to the toolbar. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors"
+                    title="Add a slide after this one"
+                    data-testid={`add-slide-inline-${index}`}
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem
+                    onClick={(e) => { e.stopPropagation(); addSlide(index); }}
+                    data-testid={`add-slide-blank-${index}`}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Blank Slide
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newIdx = addComparisonSlide("pro-con", index);
+                      requestAnimationFrame(() => {
+                        window.dispatchEvent(
+                          new CustomEvent("fctg:open-configure", { detail: { index: newIdx } })
+                        );
+                      });
+                    }}
+                    className="text-[#D4A537] focus:text-[#D4A537] focus:bg-[#D4A537]/10"
+                    data-testid={`add-slide-comparison-${index}`}
+                  >
+                    <Columns2 className="w-4 h-4 mr-2" />
+                    <span className="flex-1">Comparison Slide</span>
+                    <span className="ml-2 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-[#FF4D6D] text-white">
+                      NEW
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Slide + divider container */}

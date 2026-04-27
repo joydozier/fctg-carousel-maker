@@ -5,6 +5,7 @@ import { LeftSidebar } from "@/components/left-sidebar";
 import { TopToolbar } from "@/components/top-toolbar";
 import { SlideCanvas } from "@/components/slide-canvas";
 import { ProjectHeader } from "@/components/project-header";
+import { ComparisonHeroCard } from "@/components/comparison-hero-card";
 import { apiRequest } from "@/lib/queryClient";
 import type { CarouselProject } from "@/lib/types";
 
@@ -100,6 +101,31 @@ export default function CarouselEditor() {
             store={store}
             activePanel={activeTopPanel}
             setActivePanel={setActiveTopPanel}
+          />
+
+          {/* Tier 4 visibility upgrade — a dismissible hero card that
+              auto-shows on a fresh canvas to advertise the new Comparison
+              layout. The card filters itself based on project state, so we
+              can render it unconditionally here. */}
+          <ComparisonHeroCard
+            project={store.project}
+            selectedSlideIndex={store.selectedSlideIndex}
+            onConvert={(index) => {
+              store.convertSlideToComparison(index);
+              requestAnimationFrame(() => {
+                window.dispatchEvent(
+                  new CustomEvent("fctg:open-configure", { detail: { index } })
+                );
+              });
+            }}
+            onAddNew={() => {
+              const newIdx = store.addComparisonSlide("pro-con");
+              requestAnimationFrame(() => {
+                window.dispatchEvent(
+                  new CustomEvent("fctg:open-configure", { detail: { index: newIdx } })
+                );
+              });
+            }}
           />
 
           {/* Canvas workspace */}
