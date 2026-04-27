@@ -67,8 +67,23 @@ export interface ComparisonGlobalSettings {
   title?: string;
 }
 
-/** 12 designer-approved high-contrast swatches for the comparison editor */
-export const COMPARISON_SWATCHES: { name: string; value: string }[] = [
+export type ComparisonSwatch = { name: string; value: string };
+
+/** FCTG brand swatches — always present at the top of every color picker */
+export const FCTG_BRAND_SWATCHES: ComparisonSwatch[] = [
+  { name: "Onyx Black", value: "#08080A" },
+  { name: "Slate Charcoal", value: "#2D2E30" },
+  { name: "Deep Bronze", value: "#433B2B" },
+  { name: "Antique Gold", value: "#B8944F" },
+  { name: "Sovereign Gold", value: "#D4A537" },
+  { name: "Linen", value: "#E2DDD5" },
+  { name: "Burgundy", value: "#7A1F2B" },
+  { name: "Midnight Teal", value: "#1B3A4B" },
+];
+
+/** Curated background-tint accents — muted/saturated colors that read well
+   behind text when rendered at low alpha. */
+export const COMPARISON_BG_SWATCHES: ComparisonSwatch[] = [
   { name: "Obsidian", value: "#08080A" },
   { name: "Dark Rum", value: "#1A1410" },
   { name: "Ink Blue", value: "#0B1E3F" },
@@ -77,10 +92,33 @@ export const COMPARISON_SWATCHES: { name: string; value: string }[] = [
   { name: "Emerald", value: "#059669" },
   { name: "Crimson", value: "#991B1B" },
   { name: "Coral", value: "#DC2626" },
-  { name: "Gold", value: "#D4A537" },
-  { name: "Cream", value: "#FDFBF7" },
+  { name: "Plum", value: "#5B21B6" },
+  { name: "Terracotta", value: "#C2410C" },
+  { name: "Olive", value: "#3F6212" },
   { name: "Slate", value: "#334155" },
+];
+
+/** Curated text-color accents — high-contrast colors safe for reading. */
+export const COMPARISON_TEXT_SWATCHES: ComparisonSwatch[] = [
   { name: "Pure White", value: "#FFFFFF" },
+  { name: "Cream", value: "#FDFBF7" },
+  { name: "Pale Gold", value: "#F5D77A" },
+  { name: "Mint", value: "#A7F3D0" },
+  { name: "Sky", value: "#BAE6FD" },
+  { name: "Rose", value: "#FECACA" },
+  { name: "Lavender", value: "#DDD6FE" },
+  { name: "Sand", value: "#FDE68A" },
+  { name: "Ash Grey", value: "#9CA3AF" },
+  { name: "Charcoal", value: "#1F2937" },
+  { name: "Pure Black", value: "#000000" },
+  { name: "Forest Ink", value: "#064E3B" },
+];
+
+/** Back-compat: legacy code (presets, divider glow) still imports COMPARISON_SWATCHES.
+   Map it to the brand row + bg accents so existing references keep working. */
+export const COMPARISON_SWATCHES: ComparisonSwatch[] = [
+  ...FCTG_BRAND_SWATCHES,
+  ...COMPARISON_BG_SWATCHES,
 ];
 
 export interface Slide {

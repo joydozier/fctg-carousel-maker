@@ -3,12 +3,15 @@ import { Plus, Trash2, ArrowLeftRight, Sparkles, GitCompare, Briefcase } from "l
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import {
-  COMPARISON_SWATCHES,
+  FCTG_BRAND_SWATCHES,
+  COMPARISON_BG_SWATCHES,
+  COMPARISON_TEXT_SWATCHES,
   buildComparisonTheme,
   type ComparisonIcon,
   type ComparisonSide,
   type ComparisonGlobalSettings,
   type ComparisonTheme,
+  type ComparisonSwatch,
   type Slide,
 } from "@/lib/types";
 import { ComparisonIconSvg, swapComparisonSides, type ComparisonFocusTarget } from "@/components/ComparisonSlide";
@@ -62,12 +65,21 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   return <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#B8944F] mt-1">{children}</h4>;
 }
 
+/* Tiered swatch picker:
+   - Top row: FCTG brand colors (always shown)
+   - Middle row: caller-supplied curated accents (different for bg vs text)
+   - Bottom: hex input for any custom color
+   When `alpha` is set, swatch clicks emit rgba(...) at that alpha so the same
+   palette can drive subtle background tints AND solid text colors. */
 function SwatchGrid({
   value,
   onChange,
   onFocus,
   onBlur,
   alpha,
+  accents = COMPARISON_BG_SWATCHES,
+  accentsLabel = "Accents",
+  testIdPrefix = "swatch",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -75,30 +87,98 @@ function SwatchGrid({
   onBlur?: () => void;
   /** When set, output is rgba(...) with this alpha (0-1) instead of hex */
   alpha?: number;
+  /** Curated accents row — swap to text/bg palettes per call site */
+  accents?: ComparisonSwatch[];
+  accentsLabel?: string;
+  testIdPrefix?: string;
 }) {
+  // Local hex draft so users can type freely without state thrash on each char
+  const [hexDraft, setHexDraft] = useState("");
+
+  const emit = (hex: string) => {
+    const out = alpha != null ? hexToRgba(hex, alpha) : hex;
+    onFocus?.();
+    onChange(out);
+  };
+
+  const isSelected = (hex: string) => {
+    const out = alpha != null ? hexToRgba(hex, alpha) : hex;
+    return normalizeColor(value) === normalizeColor(out);
+  };
+
+  const Row = ({ swatches, label }: { swatches: ComparisonSwatch[]; label: string }) => (
+    <div className="space-y-1">
+      <div className="text-[9px] uppercase tracking-wider text-[#6A6560] font-semibold">{label}</div>
+      <div className="grid grid-cols-8 gap-1" onFocus={onFocus} onBlur={onBlur}>
+        {swatches.map((s) => {
+          const selected = isSelected(s.value);
+          return (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => emit(s.value)}
+              className={cn(
+                "h-6 w-full rounded-md border transition-all",
+                selected
+                  ? "ring-2 ring-[#D4A537] ring-offset-1 ring-offset-[#2D2E30] border-transparent"
+                  : "border-[#4A4B4D] hover:border-[#B8944F]"
+              )}
+              style={{ background: s.value }}
+              title={`${s.name} (${s.value})`}
+              data-testid={`${testIdPrefix}-${s.name.toLowerCase().replace(/\s+/g, "-")}`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Validate + commit a typed hex on Enter / blur
+  const tryCommitHex = () => {
+    const raw = hexDraft.trim();
+    if (!raw) return;
+    const hex = raw.startsWith("#") ? raw : `#${raw}`;
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) {
+      emit(hex);
+      setHexDraft("");
+    }
+  };
+
   return (
-    <div className="grid grid-cols-6 gap-1.5" onFocus={onFocus} onBlur={onBlur}>
-      {COMPARISON_SWATCHES.map((s) => {
-        const out = alpha != null ? hexToRgba(s.value, alpha) : s.value;
-        const selected = normalizeColor(value) === normalizeColor(out);
-        return (
-          <button
-            key={s.value}
-            type="button"
-            onClick={() => {
-              onFocus?.();
-              onChange(out);
+    <div className="space-y-2">
+      <Row swatches={FCTG_BRAND_SWATCHES} label="FCTG Brand" />
+      <Row swatches={accents} label={accentsLabel} />
+
+      {/* Custom hex input — escape hatch for any color */}
+      <div className="flex items-center gap-1.5 pt-1">
+        <span className="text-[9px] uppercase tracking-wider text-[#6A6560] font-semibold shrink-0">Custom</span>
+        <div className="relative flex-1">
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#6A6560] text-xs pointer-events-none">#</span>
+          <input
+            type="text"
+            value={hexDraft}
+            onFocus={onFocus}
+            onChange={(e) => setHexDraft(e.target.value.replace(/[^0-9a-fA-F#]/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                tryCommitHex();
+              }
             }}
-            className={cn(
-              "h-7 w-full rounded-md border transition-all",
-              selected ? "ring-2 ring-[#D4A537] ring-offset-1 ring-offset-[#2D2E30] border-transparent" : "border-[#4A4B4D] hover:border-[#B8944F]"
-            )}
-            style={{ background: s.value }}
-            title={s.name}
-            data-testid={`swatch-${s.name.toLowerCase().replace(/\s+/g, "-")}`}
+            onBlur={tryCommitHex}
+            placeholder="hex code"
+            maxLength={7}
+            className="w-full h-6 pl-5 pr-2 rounded-md border border-[#4A4B4D] bg-[#343536] text-[10px] font-mono text-[#E2DDD5] placeholder:text-[#6A6560] focus:border-[#D4A537] focus:outline-none"
+            data-testid={`${testIdPrefix}-hex-input`}
           />
-        );
-      })}
+        </div>
+        {/* Live preview chip of current value */}
+        <div
+          className="h-6 w-6 rounded-md border border-[#4A4B4D] shrink-0"
+          style={{ background: value || "transparent" }}
+          title={`Current: ${value}`}
+        />
+      </div>
     </div>
   );
 }
@@ -277,6 +357,9 @@ export function ComparisonPanel({
               value={global.dividerGlowColor}
               onChange={(v) => updateGlobal({ dividerGlowColor: v })}
               onFocus={() => setFocusAndPropagate({ side: "global", field: "divider" })}
+              accents={COMPARISON_TEXT_SWATCHES}
+              accentsLabel="Glow accents"
+              testIdPrefix="glow-swatch"
             />
           </div>
         )}
@@ -432,6 +515,9 @@ function SideEditor({
           onFocus={() => setFocusAndPropagate({ side, field: "background" })}
           onChange={(v) => update({ backgroundColor: v })}
           alpha={0.18}
+          accents={COMPARISON_BG_SWATCHES}
+          accentsLabel="Background accents"
+          testIdPrefix={`bg-swatch-${side}`}
         />
       </div>
 
@@ -442,6 +528,9 @@ function SideEditor({
           value={data.textColor}
           onFocus={() => setFocusAndPropagate({ side, field: "textColor" })}
           onChange={(v) => update({ textColor: v })}
+          accents={COMPARISON_TEXT_SWATCHES}
+          accentsLabel="Text accents"
+          testIdPrefix={`text-swatch-${side}`}
         />
       </div>
     </div>
